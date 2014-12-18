@@ -1,0 +1,149 @@
+Implemented options:
+
+*********************
+***Transition type***
+*********************
+trans_mode cont Continuous transition
+trans_mode loca Diffuzion-Localization
+trans_mode disc Discontinuous transition
+
+NO DEFAULT VALUE
+
+**********************
+***Closure relation***
+**********************
+closure    hncc HyperNetted Chain closure
+closure    msac Mean Square Approximation closure
+closure    orpa Optimized Random Phase Approximation
+                (not stable yet)
+
+NO DEFAULT VALUE
+
+*************************
+***Type of calculation***
+*************************
+calc_mode  sing Single point
+calc_mode  dich Dichotomy
+calc_mode  rest Restart a dichotomy
+
+NO DEFAULT VALUE
+
+***************************
+***Fast dichomoty option***
+***************************
+fast       false/true Fast Dichotomy mode
+
+If an inflexion point is found, f(q) at the inflexion point is used instead of the converged one.
+Do not use with a too high precision because inflexion points may happen en in glass phase when calculating very close to the transition.
+Only works when calculating the discontinuous transition and using dich or rest options
+
+DEFAULT VALUE .false.
+
+****************************************
+***Varying parameter in the dichotomy***
+****************************************
+var_param  dens Precision made on the density in the dichotomy
+var_param  delt Precision made on delta in the dichotomy
+var_param  lamb Refine of lambda, precision on the value of lambda
+
+NO DEFAULT VALUE
+
+**********************************************************
+***Initalization of the cr and cdr arrays in struct.f95***
+**********************************************************
+cr_init    pyev Percus-Yevick initialization
+cr_init    hncc Hypernetted Chain initialization
+cr_init    zero Zero all the way
+cr_init    file Read the arrays from existing files present in the working directory
+
+DEFAULT VALUE pyev
+
+************************************
+***Initialization of the fq array***
+************************************
+fq_init    unit One all the way
+fq_init    file Read the array from an existing file present in the working directory
+
+DEFAULT VALUE unit
+
+********************************
+***Other important parameters***
+********************************
+density    xxxx
+delta      xxxx
+sigma      xxxx
+var_incr   xxxx Default value 1.05
+mix_param  xxxx Default value 0.95
+
+
+
+
+yyyy: Four letter string. No more, no less, be careful.
+xxxx: Float number.
+      Fortran double precision convention (x.xxdxx) may be used.
+bbbb: Boolean (true/false)
+
+These are examples of jobs you can run, however the order can be changed.
+
+Single point:
+
+trans_mode yyyy
+closure    yyyy
+calc_mode  sing
+density    xxxx
+delta      xxxx
+sigma      xxxx
+
+Dichotomy:
+
+trans_mode yyyy
+closure    yyyy
+calc_mode  dich
+fast       bbbb
+var_param  yyyy
+var_incr   xxxx
+var_prec   xxxx
+density    xxxx
+delta      xxxx
+sigma      xxxx
+
+Fast Dichotomy:
+
+trans_mode disc
+closure    yyyy
+calc_mode  fdic
+var_param  yyyy
+var_incr   xxxx
+var_prec   xxxx
+density    xxxx
+delta      xxxx
+sigma      xxxx
+
+Restart job:
+
+trans_mode yyyy
+closure    yyyy
+calc_mode  rest
+var_param  yyyy
+var_prec   xxxx
+var_liq    xxxx
+var_glas   xxxx
+delta      xxxx
+sigma      xxxx
+
+Refine lambda:
+
+trans_mode yyyy
+closure    yyyy
+calc_mode  dich
+var_param  lamb
+var_prec   xxxx
+dens_lo    xxxx
+delt_li_lo xxxx
+delt_gl_lo xxxx
+dens_hi    xxxx
+delt_li_hi xxxx
+delt_gl_hi xxxx
+sigma      xxxx
+
+
