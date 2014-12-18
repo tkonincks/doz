@@ -63,6 +63,7 @@ DEFAULT VALUE pyev
 ************************************
 fq_init    unit One all the way
 fq_init    file Read the array from an existing file present in the working directory
+           Not stable yet
 
 DEFAULT VALUE unit
 
