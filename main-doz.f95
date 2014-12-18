@@ -1044,9 +1044,7 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .eq. 'dens') .and. (trans_mode
 !FAST DICH DENS DISC
 !=================================================
 else if ((calc_mode .eq. 'dich') .and. (fast .eqv. .true.) .and. (var_param .eq. 'dens') .and. (trans_mode .eq. 'disc')) then
-  write (6,*) "fast ",fast
   fast=.false.
-  write (6,*) "fast ",fast
   write (6,*) ""
   write (6,800) "                  FIRST RESULTS                      "
   write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
@@ -1065,7 +1063,6 @@ else if ((calc_mode .eq. 'dich') .and. (fast .eqv. .true.) .and. (var_param .eq.
   call fileman('fq.dat',6,11,0)
   conv_fq=fq(witb(fq,a_size))
   write (6,901) "conv_fq    = ",conv_fq
-  write (6,*) "fast ",fast
   if (conv_fq .lt. prec_fq) then
     do while (conv_fq .lt. prec_fq)
       dens_liq=density
@@ -1092,7 +1089,6 @@ else if ((calc_mode .eq. 'dich') .and. (fast .eqv. .true.) .and. (var_param .eq.
       write (6,901) "conv_fq    = ",conv_fq
     end do
     dens_glas=density
-  write (6,*) "fast ",fast
   else if (conv_fq .gt. prec_fq) then
     do while (conv_fq .gt. prec_fq)
       dens_glas=density
@@ -1117,13 +1113,10 @@ else if ((calc_mode .eq. 'dich') .and. (fast .eqv. .true.) .and. (var_param .eq.
       call fileman('fq.dat',6,11,0)
       conv_fq=fq(witb(fq,a_size))
       write (6,901) "conv_fq    = ",conv_fq
-  write (6,*) "fast ",fast
     end do
     dens_liq=density
   end if
-  write (6,*) "fast ",fast
   fast=.true.
-  write (6,*) "fast ",fast
   write (6,*) ""
   write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
   write (6,800) "||           ENTERING THE DICHOTOMY                ||"
