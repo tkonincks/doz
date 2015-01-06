@@ -68,11 +68,12 @@ double precision,dimension(0:2**p2)::hcq !Same, in the F-space
 double precision,dimension(0:2**p2)::scq
 double precision,dimension(0:2**p2)::sdq
 
-!These are for the ORPA closure
+!These are for the EXPC closure
 double precision,dimension(0:2**p2)::hrref
 double precision,dimension(0:2**p2)::hdrref
 double precision,dimension(0:2**p2)::crref
 double precision,dimension(0:2**p2)::cdrref
+double precision,dimension(0:2**p2)::ccrref
 double precision,dimension(0:2**p2)::cqref
 double precision,dimension(0:2**p2)::cdqref
 double precision,dimension(0:2**p2)::gamqref
@@ -139,6 +140,7 @@ do i=0,2**p2
   hdrref(i)=0.0d0
   crref(i)=0.0d0
   cdrref(i)=0.0d0
+  ccrref(i)=0.0d0
   cqref(i)=0.0d0
   cdqref(i)=0.0d0
   gamqref(i)=0.0d0
@@ -148,7 +150,6 @@ do i=0,2**p2
   krenorm(i)=0.0d0 
   conv1(i)=0.0d0
 end do
-
 
 eta=density*(4.0d0/3.0d0)*pi
 lamb1=((1.0d0+2.0d0*eta)**2)/((1.0d0-eta)**4)
@@ -231,11 +232,8 @@ do while (convergence .gt. prec)
   cdq(0)=0.0d0
 
   do i=0,2**p2
-
     cq(0)=cq(0)+4.0d0*pi*(r(i)**2)*cr(i)*dr
-
     cdq(0)=cdq(0)+4.0d0*pi*(r(i)**2)*cdr(i)*dr
-
   end do
 
   call fft3s(0.0,cr(0),p2,r(2**p2),cq(0),1,0)
@@ -245,12 +243,10 @@ do while (convergence .gt. prec)
 !Calculating the gamq and gamdq arrays
 !==================================================
   do i=0,2**p2
-
     gamq(i)=(cq(i)-cdq(i))/(1.0d0-density*(cq(i)-cdq(i)))&
     +cdq(i)/((1.0d0-density*(cq(i)-cdq(i)))**2)-cq(i)
 
     gamdq(i)=cdq(i)/((1.0d0-density*(cq(i)-cdq(i)))**2)-cdq(i)
-
   end do
 
 !Inverse FT of gamq and gamdq
@@ -283,13 +279,13 @@ do while (convergence .gt. prec)
       cdr2(i)=dexp(k(i)+gamdr(i))-1.0d0-gamdr(i)
     end do
 
-  else if ((closure .eq. 'msac') .or. (closure .eq. 'orpa')) then
+  else if ((closure .eq. 'msac') .or. (closure .eq. 'expc')) then
 
     do i=0,disc-1
       cr2(i)=-1.0d0-gamr(i)
       cdr2(i)=k(i)
     end do    
-    cr2(disc)=(k(disc)-1.0d0-gamr(disc))/2.0d0
+    cr2(disc)=(k(disc+1)-1.0d0-gamr(disc+1))/2.0d0
     cdr2(disc)=k(disc)
     do i=disc+1,2**p2
       cr2(i)=k(i)
@@ -320,9 +316,8 @@ do while (convergence .gt. prec)
     cr(i)=cr2(i)
     cdr(i)=cdr2(i)
 
-    if (cr(i) .ne. cr(i)) then
-      write (6,*) "PROGRAM CRASHED"
-      write (6,*) i,r(i),cr(i)
+    if ((cr(i) .ne. cr(i)) .or. (cdr(i) .ne. cdr(i))) then
+      write (6,*) "STRUCTURE CRASHED"
       stop
     end if
 
@@ -344,7 +339,7 @@ do while (convergence .gt. prec)
       sdq(i)=density*hdq(i)
     end do
 
-  else if ((closure .eq. 'msac') .or. (closure .eq. 'orpa')) then
+  else if ((closure .eq. 'msac') .or. (closure .eq. 'expc')) then
 
     do i=0,disc-1
       hr(i)=-1.0d0
@@ -379,21 +374,18 @@ if (density .eq. 0.0d0) then
       hdr(i)=exp(k(i))-1.0d0
     end do
 
-  else if ((closure .eq. 'msac') .or. (closure .eq. 'orpa')) then
+  else if ((closure .eq. 'msac') .or. (closure .eq. 'expc')) then
 
-    do i=0,2**p2
+    do i=0,disc-1
       hdr(i)=k(i)
+      hr(i)=-1.0d0
     end do
-
-!  else if (closure .eq. 'orpa') then
-
-!    do i=0,disc-1
-      
-!    end do
-
-!    do i=disc+1,2**p2
-
-!    end do
+      hdr(disc)=k(disc)
+      hr(disc)=(k(disc+1)-1.0d0)/2.0d0
+    do i=disc+1,2**p2
+      hdr(i)=k(i)
+      hr(i)=k(i)
+    end do
 
   end if
 
@@ -402,10 +394,9 @@ end if
 call fft3s(0.0,hdr(0),p2,r(2**p2),hdq(0),1,0)
 
 
-!Calculation of the reference system for ORPA
+!Calculation of the reference system for EXPC
 !==================================================
-
-if (closure .eq. 'orpa') then
+if (closure .eq. 'expc') then
 
   do i=0,disc-1 !cr
     crref(i)=-lamb1-6.0d0*eta*lamb2*r(i)-0.5d0*eta*lamb1*r(i)**3 !py
@@ -426,7 +417,6 @@ if (closure .eq. 'orpa') then
   do i=0,2**p2
     gamqref(i)=(cqref(i)-cdqref(i))/(1.0d0-density*(cqref(i)-cdqref(i)))&
     +cdqref(i)/((1.0d0-density*(cqref(i)-cdqref(i)))**2)-cqref(i)
-
     gamdqref(i)=cdqref(i)/((1.0d0-density*(cqref(i)-cdqref(i)))**2)-cdqref(i)
   end do
 
@@ -452,10 +442,35 @@ if (closure .eq. 'orpa') then
     krenorm(i)=hr(i)-hrref(i) !calculation of the renomalized potential
   end do
 
-  do i=0,2**p2
+  do i=0,disc-1
+    hdr(i)=dexp(hdr(i))-1.0d0 !for the disconnected part, the renormalized potential is equal to hdr(i)
     hr(i)=(hrref(i)+1.0d0)*dexp(krenorm(i))-1.0d0
-    hdr(i)=dexp(hdrref(i))-1.0d0 !for the disconnected part, the renormalized potential is equal to hdrref(i)
   end do
+  hdr(disc)=dexp(hdr(disc))-1.0d0
+  hr(disc)=0.5d0*(2.0d0*hrref(disc)+1.0d0)*dexp(2.0d0*(hr(disc)-hrref(disc)))-1.0d0
+  do i=disc+1,2**p2
+    hdr(i)=dexp(hdr(i))-1.0d0
+    hr(i)=(hrref(i)+1.0d0)*dexp(krenorm(i))-1.0d0
+  end do
+
+  hq(0)=0.0d0
+  hdq(0)=0.0d0
+
+  do i=0,2**p2
+    hq(0)=hq(0)+4.0d0*pi*(r(i)**2)*hr(i)*dr
+    hdq(0)=hdq(0)+4.0d0*pi*(r(i)**2)*hdr(i)*dr
+  end do
+
+  call fft3s(0.0,hr(0),p2,r(2**p2),hq(0),1,0)
+  call fft3s(0.0,hdr(0),p2,r(2**p2),hdq(0),1,0)
+
+  do i=0,2**p2
+    hcq(i)=hq(i)-hdq(i)
+    scq(i)=1.0d0+density*hcq(i)
+    sdq(i)=density*hdq(i)
+  end do
+
+
 
 end if
 
@@ -471,6 +486,8 @@ call fileman(cdrfile,len(cdrfile),17,1)
 call fileman(scqfile,len(scqfile),18,1)
 call fileman(sdqfile,len(sdqfile),19,1)
 
+call fileman('hq.dat',6,20,1)
+
 do i=0,2**p2
   write(11,*) r(i),hr(i)
   write(12,*) r(i),hdr(i)
@@ -481,6 +498,8 @@ do i=0,2**p2
   write(17,*) r(i),cdr(i)
   write(18,*) q(i),scq(i)
   write(19,*) q(i),sdq(i)
+
+  write(20,*) q(i),hq(i)
 end do
 
 call fileman(hrfile,len(hrfile),11,0)
@@ -492,5 +511,8 @@ call fileman(crfile,len(crfile),16,0)
 call fileman(cdrfile,len(cdrfile),17,0)
 call fileman(scqfile,len(scqfile),18,0)
 call fileman(sdqfile,len(sdqfile),19,0)
+
+call fileman('hq.dat',6,20,0)
+
 
 end subroutine

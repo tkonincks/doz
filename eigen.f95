@@ -402,7 +402,7 @@ if (trans_mode .eq. 'cont') then
       end do
     end do
   end do
-  
+ 
   lambda=0.5d0*lambda
   
   !Calculate the eigenvalueue

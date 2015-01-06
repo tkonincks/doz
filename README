@@ -14,8 +14,7 @@ NO DEFAULT VALUE
 **********************
 closure    hncc HyperNetted Chain closure
 closure    msac Mean Square Approximation closure
-closure    orpa Optimized Random Phase Approximation
-                (not stable yet)
+closure    expc Exponential closure, also called ORPA
 
 NO DEFAULT VALUE
 
