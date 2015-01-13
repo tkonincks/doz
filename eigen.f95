@@ -1,4 +1,4 @@
-subroutine eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,flag_inflex,fast,init_fq)
+subroutine eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,flag_inflex,fast,fcutoff,init_fq)
 
 implicit none
 
@@ -6,7 +6,7 @@ implicit none
 !Input/Output
 !=================================================
 character(len=4)::trans_mode,init_fq
-double precision::density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex
+double precision::density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,fcutoff
 logical::flag_inflex,fast
 
 !Iteration variables
@@ -267,7 +267,7 @@ if (trans_mode .eq. 'disc') then
       end if
     end do
   
-    if ((flag_inflex .eqv. .false.) .and. (convergence .gt. 1.0d-11)) then
+    if ((flag_inflex .eqv. .false.) .and. (convergence .gt. fcutoff)) then
 !      if ((err2 .gt. superr) .and. (convergence .gt. 1.0d-9) .and. (convergence .lt. 1.0d-3)) then
       if (err2 .gt. superr) then
         do iq=0,a_size

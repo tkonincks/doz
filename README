@@ -32,12 +32,14 @@ NO DEFAULT VALUE
 ***Fast dichomoty option***
 ***************************
 fast       false/true Fast Dichotomy mode
+fcutoff    the value below which the inflexion if not considered
 
 If an inflexion point is found, f(q) at the inflexion point is used instead of the converged one.
 Do not use with a too high precision because inflexion points may happen en in glass phase when calculating very close to the transition.
 Only works when calculating the discontinuous transition and using dich or rest options
 
 DEFAULT VALUE .false.
+DEFAULT VALUE 1.0d-10
 
 ****************************************
 ***Varying parameter in the dichotomy***
