@@ -1,11 +1,11 @@
-subroutine eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,flag_inflex,fast,fcutoff,init_fq)
+subroutine eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,flag_inflex,fast,fcutoff,fq_init)
 
 implicit none
 
 
 !Input/Output
 !=================================================
-character(len=4)::trans_mode,init_fq
+character(len=4)::trans_mode,fq_init
 double precision::density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,fcutoff
 logical::flag_inflex,fast
 
@@ -191,14 +191,14 @@ end do
 !=================================================
 if (trans_mode .eq. 'disc') then
 
-  if (init_fq .eq. 'file') then
+  if (fq_init .eq. 'file') then
     call fileman(fqfile,len(fqfile),11,1)
     do iq=0,a_size
       read (11,*) q(iq),fq(iq)
     end do
     call fileman(fqfile,len(fqfile),11,0)
 
-  else if (init_fq .eq. 'unit') then
+  else if (fq_init .eq. 'unit') then
     do iq=0,a_size
      fq(ip)=1.0d0
      fq_old(ip)=1.0d0
@@ -268,7 +268,6 @@ if (trans_mode .eq. 'disc') then
     end do
   
     if ((flag_inflex .eqv. .false.) .and. (convergence .gt. fcutoff)) then
-!      if ((err2 .gt. superr) .and. (convergence .gt. 1.0d-9) .and. (convergence .lt. 1.0d-3)) then
       if (err2 .gt. superr) then
         do iq=0,a_size
           fq_inflex(iq)=fq(iq)
@@ -291,6 +290,13 @@ if (trans_mode .eq. 'disc') then
 
     if ((flag_inflex .eqv. .true.) .and. (fast .eqv. .true.)) exit
     !No need to calculate the rest if we use the 'fast' option, just stick at the fq_inflex which is a better approximation anyway
+
+    do iq=0,a_size
+      if (fq(iq) .ne. fq(iq)) then
+        write (6,*) "DYNAMICS CRASHED"
+        stop
+      end if
+    end do
 
   end do
   

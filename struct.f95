@@ -166,13 +166,23 @@ do i=0,2**p2 !K(r)
 end do
 
 !Test the existence of a file named cr.dat
-inquire(file='cr.dat',exist=fileex)
-if (fileex .eqv. .true.) then
-  call fileman(crfile,len(crfile),11,1)
-  do i=0,2**p2
-    read (11,*) r(i),cr(i)
-  end do
-  call fileman(crfile,len(crfile),11,0)
+if (cr_init .eq. 'file') then
+  inquire(file='cr.dat',exist=fileex)
+  if (fileex .eqv. .true.) then
+    call fileman(crfile,len(crfile),11,1)
+    do i=0,2**p2
+      read (11,*) r(i),cr(i)
+    end do
+    call fileman(crfile,len(crfile),11,0)
+  else
+    do i=0,disc-1 !cr
+      cr(i)=-lamb1-6.0d0*eta*lamb2*r(i)-0.5d0*eta*lamb1*r(i)**3 !py
+    end do
+    cr(disc)=(-lamb1-6.0d0*eta*lamb2*r(disc-1)-0.5d0*eta*lamb1*r(disc-1)**3)/2.0d0 !py
+    do i=disc+1,2**p2
+      cr(i)=0.0d0 !py
+    end do
+  end if
 
 else if (cr_init .eq. 'pyev') then
   do i=0,disc-1 !cr
