@@ -250,6 +250,11 @@ if (trans_mode .eq. 'disc') then
     do iq=0,a_size
       fq(iq)=ffq(iq)/(1.0d0+ffq(iq))
     end do
+
+    !Calculate conv2 and the convergence
+    !=================================================
+    conv2=fq(witb(fq,a_size))
+    convergence=dabs(conv2-conv1) !calculate the convergence
   
     !Store the fq at the inflexion point
     !=================================================
@@ -262,7 +267,8 @@ if (trans_mode .eq. 'disc') then
       end if
     end do
   
-    if (flag_inflex .eqv. .false.) then
+    if ((flag_inflex .eqv. .false.) .and. (convergence .gt. 1.0d-11)) then
+!      if ((err2 .gt. superr) .and. (convergence .gt. 1.0d-9) .and. (convergence .lt. 1.0d-3)) then
       if (err2 .gt. superr) then
         do iq=0,a_size
           fq_inflex(iq)=fq(iq)
@@ -278,17 +284,13 @@ if (trans_mode .eq. 'disc') then
       fq_old(iq)=fq(iq)
     end do
   
-    !Calculate conv2 and the convergence
-    !=================================================
-    conv2=fq(witb(fq,a_size))
-    convergence=dabs(conv2-conv1) !calculate the convergence
-  
+ 
     !Write the convergence
     !=================================================
     if (modulo(iter,10) .eq. 0) write (6,'(i7,a10,es24.16)') iter,"      ||  ",convergence
 
     if ((flag_inflex .eqv. .true.) .and. (fast .eqv. .true.)) exit
-    !No need to calculate the rest if we use the 'fdic' option, just stick at the fq_inflex which is a better approximation anyway
+    !No need to calculate the rest if we use the 'fast' option, just stick at the fq_inflex which is a better approximation anyway
 
   end do
   
@@ -780,11 +782,12 @@ if (flag_inflex .eqv. .true.) then
   n2_inflex=dsqrt(n2_inflex)
   
   eigenvalue_inflex=n2_inflex/n1_inflex
-  
-  if (fast .eqv. .true.) then
-    eigenvalue=eigenvalue_inflex
-    lambda=lambda_inflex
-  end if
+ 
+!an old option that is in fact useless 
+!  if (fast .eqv. .true.) then
+!    eigenvalue=eigenvalue_inflex
+!    lambda=lambda_inflex
+!  end if
 
 end if  
   

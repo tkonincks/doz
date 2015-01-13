@@ -26,14 +26,47 @@ end function
 integer function witb (tab,d)
 !Who is the biggest in this array?
 !=================================================
-integer::d,i,bigi=0
-double precision,dimension(d)::tab
-double precision::big=-1.0d100
-do i=0,d
-  if (tab(i) .gt. big) then
-    big=tab(i)
-    bigi=i
+  integer::d,i,bigi=0
+  double precision,dimension(d)::tab
+  double precision::big=-1.0d100
+  do i=0,d
+    if (tab(i) .gt. big) then
+      big=tab(i)
+      bigi=i
+    end if
+  end do
+  witb=bigi
+end function
+
+logical function liq_glas (trans_mode,fast,eigenvalue,conv_fq,flag_inflex)
+!returns .true. for the liquid state and .false. for the glas state
+!=================================================
+  character(len=4)::trans_mode
+  double precision::eigenvalue,conv_fq
+  double precision::prec_fq=1.0d-6
+  logical::fast,flag_inflex
+
+  if (trans_mode .eq. 'cont') then
+    if (eigenvalue .lt. 1.0d0) then
+      liq_glas=.true.
+    else
+      liq_glas=.false.
+    end if
+
+  else if ((trans_mode .eq. 'disc') .and. (fast .eqv. .true.)) then
+    if (flag_inflex .eqv. .true.) then
+      liq_glas=.true.
+    else
+      liq_glas=.false.
+   end if
+
+  else if (trans_mode .eq. 'disc') then
+    if (conv_fq .lt. prec_fq) then
+      liq_glas=.true.
+    else
+      liq_glas=.false.
+    end if
+
   end if
-end do
-witb=bigi
+
 end function

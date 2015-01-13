@@ -25,11 +25,13 @@ double precision::delt_gl_hi
 double precision::delt_hi
 double precision::lamb_hi
 
-logical::fast
+logical::fast,var_fast
 
 double precision::mix_param
 
 logical::inflex
+
+logical::conv_glas,conv_liq
 
 !Ouputs of the run subroutine
 !==================================================
@@ -38,8 +40,7 @@ double precision::eigenvalue_inflex,lambda_inflex
 
 !For the dichotomy, calculation of the precision and stuff
 !==================================================
-double precision::prec_eigen_cont
-double precision::prec_eigen_disc
+double precision::prec_eigen
 double precision::prec_fq
 double precision::conv_fq
 double precision::delt_liq
@@ -69,6 +70,8 @@ character(len=10)::t
 !Functions
 !==================================================
 integer::witb
+logical::liq_glas
+
 
 !For the calculation time
 !==================================================
@@ -123,12 +126,14 @@ lamb_hi=0.0d0
                  
 var_incr=1.05d0 !Has to be higher than 1.0d0
 var_prec=0.0d0
-prec_eigen_cont=1.0d-6
-prec_eigen_disc=1.0d-4
+prec_eigen=1.0d-4
 prec_fq=1.0d-6
 prec_lamb=1.0d-6
 
 fast=.false.
+
+conv_glas=.false.
+conv_liq=.false.
 
 iter=0
 
@@ -164,7 +169,7 @@ write (6,*) '     `"888*""      ''Y"      ''8    8888 '
 write (6,*) '        ""                  ''8    888F '
 write (6,*) '                             %k  <88F  '
 write (6,*) '                              "+:*%`   '
-write (6,*) '         VERSION 05012015         '
+write (6,*) '         VERSION 12012015         '
 write (6,*) ''
 write (6,'(a24,a8,a,a10)') "CALCULATION LAUNCHED ON ",d," ",t
                                    
@@ -182,8 +187,8 @@ call read (trans_mode,closure,calc_mode,var_param,density,delta,sigma,var_incr&
 ,var_prec,var_liq,var_glas,dens_lo,delt_li_lo,delt_gl_lo,dens_hi,delt_li_hi&
 ,delt_gl_hi,fast,mix_param,cr_init,fq_init)
 
-prec_eigen_cont=var_prec
-prec_eigen_disc=var_prec
+prec_eigen=var_prec
+var_fast=fast
 
 if ((calc_mode .eq. 'rest') .and. (var_param .eq. 'delt')) then
   delt_liq=var_liq
@@ -256,1388 +261,329 @@ write (6,900) 'fq_init    = ',fq_init
 !SINGLE POINT
 !=================================================
 if (calc_mode .eq. 'sing') then
+  write (6,*) ""
+  write (6,800) "                     RESULTS                         "
+  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
+  call struct (density,delta,sigma,closure,mix_param,cr_init)
+  call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
+  write (6,*) ""
+  write (6,901) "eigenvalue = ",eigenvalue
+  write (6,901) "lambda     = ",lambda
+  if (trans_mode .eq. 'disc') then
+    write (6,903) "inflexion  = ",inflex
+    if (inflex .eqv. .true.) then
+      write (6,901) "eigen_infl = ",eigenvalue_inflex
+      write (6,901) "lamb_infl  = ",lambda_inflex
+    end if
+    write (6,901) "conv_fq    = ",fq(witb(fq,a_size))
+  end if
+
+
+
+
+
+
+
+else if (calc_mode .eq. 'rest') then
+
+goto 1
+
+
+
+
+
+
+else if (calc_mode .eq. 'dich') then
+
+  write (6,*) ""
+  write (6,800) "                  FIRST RESULTS                      "
+  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
+  fast=.false.
+  call struct (density,delta,sigma,closure,mix_param,cr_init)
+  call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
+  if (trans_mode .eq. 'disc') then
+    call fileman('fq.dat',6,11,1)
+    do i=0,a_size
+      read (11,*) q(i),fq(i)
+    end do
+    call fileman('fq.dat',6,11,0)
+    conv_fq=fq(witb(fq,a_size))
+  end if
+  write (6,*) ""
+  write (6,901) "density    = ",density
+  write (6,901) "delta      = ",delta
+  write (6,*) ""
+  write (6,901) "eigenvalue = ",eigenvalue
+  write (6,901) "lambda     = ",lambda
+  if (trans_mode .eq. 'disc') then
+    write (6,903) "inflexion  = ",inflex
+    if (inflex .eqv. .true.) then
+      write (6,901) "eigen_infl = ",eigenvalue_inflex
+      write (6,901) "lamb_infl  = ",lambda_inflex
+      inflex=.false.
+    end if
+    write (6,902) "conv_fq    = ",conv_fq
+  end if
+
+
+
+  if (liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .true.) then
+    do while (liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .true.)
+      if (var_param .eq. 'delt') then
+        delt_liq=delta
+        delta=delta*var_incr
+      else if (var_param .eq. 'dens') then
+        dens_liq=density
+        if ((trans_mode .eq. 'cont') .or. (trans_mode .eq. 'loca')) density=density/var_incr
+        if (trans_mode .eq. 'disc') density=density*var_incr
+      end if
+      write (6,*) ""
+      write (6,800) "          Looking for the transition point           "
+      write (6,800) "-----------------------------------------------------"
+      call struct (density,delta,sigma,closure,mix_param,cr_init)
+      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
+      if (trans_mode .eq. 'disc') then
+        call fileman('fq.dat',6,11,1)
+        do i=0,a_size
+          read (11,*) q(i),fq(i)
+        end do
+        call fileman('fq.dat',6,11,0)
+        conv_fq=fq(witb(fq,a_size))
+      end if
+      write (6,*) ""
+      if (var_param .eq. 'delt') then
+        write (6,901) "delt_liq   = ",delt_liq
+        write (6,901) "delt_glas  = ",delt_glas
+        write (6,*) ""
+        write (6,901) "density    = ",density
+      else if (var_param .eq. 'dens') then
+        write (6,901) "dens_liq   = ",dens_liq
+        write (6,901) "dens_glas  = ",dens_glas
+        write (6,*) ""
+        write (6,901) "delta      = ",delta
+      end if
+      write (6,*) ""
+      write (6,901) "eigenvalue = ",eigenvalue
+      write (6,901) "lambda     = ",lambda
+      if (trans_mode .eq. 'disc') then
+        write (6,903) "inflexion  = ",inflex
+        if (inflex .eqv. .true.) then
+          write (6,901) "eigen_infl = ",eigenvalue_inflex
+          write (6,901) "lamb_infl  = ",lambda_inflex
+          inflex=.false.
+        end if
+        write (6,902) "conv_fq    = ",conv_fq
+      end if
+    end do
+    if (var_param .eq. 'delt') delt_glas=delta
+    if (var_param .eq. 'dens') dens_glas=density
+
+
+
+
+
+
+
+
+
+
+  else if (liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .false.) then
+    do while (liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .false.)
+      if (var_param .eq. 'delt') then
+        delt_glas=delta
+        delta=delta/var_incr
+      else if (var_param .eq. 'dens') then
+        dens_glas=density
+        if ((trans_mode .eq. 'cont') .or. (trans_mode .eq. 'loca')) density=density*var_incr
+        if (trans_mode .eq. 'disc') density=density/var_incr
+      end if
+      write (6,*) ""
+      write (6,800) "          Looking for the transition point           "
+      write (6,800) "-----------------------------------------------------"
+      call struct (density,delta,sigma,closure,mix_param,cr_init)
+      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
+      if (trans_mode .eq. 'disc') then
+        call fileman('fq.dat',6,11,1)
+        do i=0,a_size
+          read (11,*) q(i),fq(i)
+        end do
+        call fileman('fq.dat',6,11,0)
+        conv_fq=fq(witb(fq,a_size))
+      end if
+      write (6,*) ""
+      if (var_param .eq. 'delt') then
+        write (6,901) "delt_liq   = ",delt_liq
+        write (6,901) "delt_glas  = ",delt_glas
+        write (6,*) ""
+        write (6,901) "density    = ",density
+      else if (var_param .eq. 'dens') then
+        write (6,901) "dens_liq   = ",dens_liq
+        write (6,901) "dens_glas  = ",dens_glas
+        write (6,*) ""
+        write (6,901) "delta      = ",delta
+      end if
+      write (6,*) ""
+      write (6,901) "eigenvalue = ",eigenvalue
+      write (6,901) "lambda     = ",lambda
+      if (trans_mode .eq. 'disc') then
+        write (6,903) "inflexion  = ",inflex
+        if (inflex .eqv. .true.) then
+          write (6,901) "eigen_infl = ",eigenvalue_inflex
+          write (6,901) "lamb_infl  = ",lambda_inflex
+          inflex=.false.
+        end if
+        write (6,902) "conv_fq    = ",conv_fq
+      end if
+    end do
+    if (var_param .eq. 'delt') delt_liq=delta
+    if (var_param .eq. 'dens') dens_liq=density
+  end if
+
+
+
+
+
+
+
+1 if (var_fast .eqv. .true.) fast=.true.
+
+
+
+
+
+  write (6,*) ""
+  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
+  write (6,800) "||           ENTERING THE DICHOTOMY                ||"
+  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
+  write (6,*) ""
+  write (6,800) "STARTING PARAMETERS                                  "
+  write (6,*) ""
+  if (var_param .eq. 'delt') then
+    write (6,901) "delt_liq   = ",delt_liq
+    write (6,901) "delt_glas  = ",delt_glas
     write (6,*) ""
-    write (6,800) "                     RESULTS                         "
+    write (6,901) "density    = ",density
+  else if (var_param .eq. 'dens') then
+    write (6,901) "dens_liq   = ",dens_liq
+    write (6,901) "dens_glas  = ",dens_glas
+    write (6,*) ""
+    write (6,901) "delta      = ",delta
+  end if
+  write (6,*) ""
+  write (6,901) "eigenvalue = ",eigenvalue
+  write (6,901) "lambda     = ",lambda
+  if (trans_mode .eq. 'disc') then
+    write (6,903) "inflexion  = ",inflex
+    if ((inflex .eqv. .true.) .and. (fast .eqv. .false.)) then
+      write (6,901) "eigen_infl = ",eigenvalue_inflex
+      write (6,901) "lamb_infl  = ",lambda_inflex
+      inflex=.false.
+    end if
+    if (fast .eqv. .false.) write (6,902) "conv_fq    = ",conv_fq
+  end if
+
+
+
+
+
+
+
+  do while ((conv_liq .eqv. .false.) .and. (conv_glas .eqv. .false.))
+  
+    call cpu_time(iter_start)
+    iter=iter+1
+    if (var_param .eq. 'delt') delta=(delt_liq+delt_glas)/2.0d0
+    if (var_param .eq. 'dens') density=(dens_liq+dens_glas)/2.0d0
+  
+    write (6,*) ""
+    write (6,*) "                 ITERATION ",iter
     write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
     call struct (density,delta,sigma,closure,mix_param,cr_init)
     call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
+    if (trans_mode .eq. 'disc') then
+      call fileman('fq.dat',6,11,1)
+      do i=0,a_size
+        read (11,*) q(i),fq(i)
+      end do
+      call fileman('fq.dat',6,11,0)
+      conv_fq=fq(witb(fq,a_size))
+    end if
+
+    if (liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .true.) then
+      if (var_param .eq. 'delt') delt_liq=delta
+      if (var_param .eq. 'dens') dens_liq=density
+    else if (liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .false.) then
+      if (var_param .eq. 'delt') delt_glas=delta
+      if (var_param .eq. 'dens') dens_glas=density
+    end if
+    call cpu_time(iter_end)
+  
+    write (6,*) ""
+    if (var_param .eq. 'delt') then
+      write (6,901) "delt_liq   = ",delt_liq
+      write (6,901) "delt_glas  = ",delt_glas
+      write (6,*) ""
+      write (6,901) "density    = ",density
+    else if (var_param .eq. 'dens') then
+      write (6,901) "dens_liq   = ",dens_liq
+      write (6,901) "dens_glas  = ",dens_glas
+      write (6,*) ""
+      write (6,901) "delta      = ",delta
+    end if
     write (6,*) ""
     write (6,901) "eigenvalue = ",eigenvalue
     write (6,901) "lambda     = ",lambda
     if (trans_mode .eq. 'disc') then
       write (6,903) "inflexion  = ",inflex
-      if (inflex .eqv. .true.) then
+      if ((inflex .eqv. .true.) .and. (fast .eqv. .false.)) then
         write (6,901) "eigen_infl = ",eigenvalue_inflex
         write (6,901) "lamb_infl  = ",lambda_inflex
+        inflex=.false.
       end if
-      write (6,901) "conv_fq    = ",fq(witb(fq,a_size))
+      if (fast .eqv. .false.) write (6,902) "conv_fq    = ",conv_fq
     end if
-  call fileman('final_res',9,11,1)
-  write (11,'(f22.16,f22.16,f22.16,f22.16)') density,density,delta,delta,lambda,eigenvalue
-  call fileman('final_res',9,11,0)
 
-
-
-
-
-
-
-
-
-
-
-!DICH DELT CONT/LOCA
-!=================================================
-else if ((calc_mode .eq. 'dich') .and. (var_param .eq. 'delt') .and. ((trans_mode .eq. 'cont') .or. (trans_mode .eq. 'loca'))) then
-  write (6,*) ""
-  write (6,800) "                  FIRST RESULTS                      "
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  call struct (density,delta,sigma,closure,mix_param,cr_init)
-  call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-  write (6,*) ""
-  write (6,901) "density    = ",density
-  write (6,901) "delta      = ",delta
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  if (eigenvalue .lt. 1.0d0) then
-    do while (eigenvalue .lt. 1.0d0)
-      delt_liq=delta
-      delta=delta*var_incr
-      write (6,*) ""
-      write (6,800) "          Looking for the transition point           "
-      write (6,800) "-----------------------------------------------------"
-      call struct (density,delta,sigma,closure,mix_param,cr_init)
-      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-      write (6,*) ""
-      write (6,901) "delt_liq   = ",delt_liq
-      write (6,901) "delt_glas  = ",delt_glas
-      write (6,*) ""
-      write (6,901) "density    = ",density
-      write (6,901) "eigenvalue = ",eigenvalue
-      write (6,901) "lambda     = ",lambda
-    end do
-    delt_glas=delta
-  else if (eigenvalue .gt. 1.0d0) then
-    do while (eigenvalue .gt. 1.0d0)
-      delt_glas=delta
-      delta=delta/var_incr
-      write (6,*) ""
-      write (6,800) "          Looking for the transition point           "
-      write (6,800) "-----------------------------------------------------"
-      call struct (density,delta,sigma,closure,mix_param,cr_init)
-      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-      write (6,*) ""
-      write (6,901) "delt_liq   = ",delt_liq
-      write (6,901) "delt_glas  = ",delt_glas
-      write (6,901) ""
-      write (6,901) "density    = ",density
-      write (6,901) "eigenvalue = ",eigenvalue
-      write (6,901) "lambda     = ",lambda
-    end do
-    delt_liq=delta
-  end if
-  write (6,*) ""
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,800) "||           ENTERING THE DICHOTOMY                ||"
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,*) ""
-  write (6,800) "STARTING PARAMETERS                                  "
-  write (6,*) ""
-  write (6,901) "delt_liq   = ",delt_liq
-  write (6,901) "delt_glas  = ",delt_glas
-  write (6,901) ""
-  write (6,901) "density    = ",density
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  do 
-    call cpu_time(iter_start)
-    iter=iter+1
-    delta=(delt_liq+delt_glas)/2.0d0
     write (6,*) ""
-    write (6,*) "                 ITERATION ",iter
-    write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-    call struct (density,delta,sigma,closure,mix_param,cr_init)
-    call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-    if (eigenvalue .lt. 1.0d0) then
-      delt_liq=delta
-    else if (eigenvalue .gt. 1.0d0) then
-      delt_glas=delta
+    write (6,*) "ITERATION TIME", iter_end-iter_start,"s"
+  
+    if (dabs(eigenvalue-1.0d0) .lt. prec_eigen) then
+      if (liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .true.) conv_liq=.true.
+      if (liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .false.) conv_glas=.true.
     end if
-    call cpu_time(iter_end)
-    write (6,*) ""
-    write (6,901) "delt_liq   = ",delt_liq
-    write (6,901) "delt_glas  = ",delt_glas
-    write (6,*) ""
-    write (6,901) "density    = ",density
-    write (6,901) "eigenvalue = ",eigenvalue
-    write (6,901) "lambda     = ",lambda
-    write (6,901) ""
-    write (6,*) "ITERATION TIME ", iter_end-iter_start,"s"
-    if (dabs(eigenvalue-1.0d0) .le. prec_eigen_cont) then
-      exit
-    end if
+  
   end do
+
   write (6,*) ""
   write (6,800) "               CONVERGENCE REACHED                   "
   write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,901) "delt_liq   =  ",delt_liq
-  write (6,901) "delt_glas  = ",delt_glas
-  write (6,*) ""
-  write (6,901) "density    = ",density
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  call fileman('final_res',9,11,1)
-  write (11,'(f22.16,f22.16,f22.16,f22.16)') density,density,delt_liq,delt_glas,lambda,eigenvalue
-  call fileman('final_res',9,11,0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-!DICH DELT DISC
-!=================================================
-else if ((calc_mode .eq. 'dich') .and. (var_param .eq. 'delt') .and. (trans_mode .eq. 'disc') .and. (fast .eqv. .false.)) then
-  write (6,*) ""
-  write (6,800) "                  FIRST RESULTS                      "
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  call struct (density,delta,sigma,closure,mix_param,cr_init)
-  call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-  call fileman('fq.dat',6,11,1)
-  do i=0,a_size
-    read (11,*) q(i),fq(i)
-  end do
-  call fileman('fq.dat',6,11,0)
-  conv_fq=fq(witb(fq,a_size))
-  write (6,*) ""
-  write (6,901) "density    = ",density
-  write (6,901) "delta      = ",delta
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .true.) then
-    write (6,901) "eigen_infl = ",eigenvalue_inflex
-    write (6,901) "lamb_infl  = ",lambda_inflex
-  end if
-  write (6,901) "conv_fq    = ",conv_fq
-  if (conv_fq .lt. prec_fq) then
-    do while (conv_fq .lt. prec_fq)
-      delt_liq=delta
-      delta=delta*var_incr
-      write (6,*) ""
-      write (6,800) "          Looking for the transition point           "
-      write (6,800) "-----------------------------------------------------"
-      call struct (density,delta,sigma,closure,mix_param,cr_init)
-      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-      call fileman('fq.dat',6,11,1)
-      do i=0,a_size
-        read (11,*) q(i),fq(i)
-      end do
-      call fileman('fq.dat',6,11,0)
-      conv_fq=fq(witb(fq,a_size))
-      write (6,*) ""
-      write (6,901) "delt_liq   = ",delt_liq
-      write (6,901) "delt_glas  = ",delt_glas
-      write (6,*) ""
-      write (6,901) "density    = ",density
-      write (6,901) "eigenvalue = ",eigenvalue
-      write (6,901) "lambda     = ",lambda
-      write (6,903) "inflexion  = ",inflex
-      if (inflex .eqv. .true.) then
-        write (6,901) "eigen_infl = ",eigenvalue_inflex
-        write (6,901) "lamb_infl  = ",lambda_inflex
-      end if
-      write (6,901) "conv_fq    = ",conv_fq
-    end do
-    delt_glas=delta
-  else if (conv_fq .gt. prec_fq) then
-    do while (conv_fq .gt. prec_fq)
-      delt_glas=delta
-      delta=delta/var_incr
-      write (6,*) ""
-      write (6,800) "          Looking for the transition point           "
-      write (6,800) "-----------------------------------------------------"
-      call struct (density,delta,sigma,closure,mix_param,cr_init)
-      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-      call fileman('fq.dat',6,11,1)
-      do i=0,a_size
-        read (11,*) q(i),fq(i)
-      end do
-      call fileman('fq.dat',6,11,0)
-      conv_fq=fq(witb(fq,a_size))
-      write (6,*) ""
-      write (6,901) "delt_liq   = ",delt_liq
-      write (6,901) "delt_glas  = ",delt_glas
-      write (6,901) ""
-      write (6,901) "density    = ",density
-      write (6,901) "eigenvalue = ",eigenvalue
-      write (6,901) "lambda     = ",lambda
-      write (6,903) "inflexion  = ",inflex
-      if (inflex .eqv..true.) then
-        write (6,901) "eigen_infl = ",eigenvalue_inflex
-        write (6,901) "lamb_infl  = ",lambda_inflex
-      end if
-      write (6,901) "conv_fq    = ",conv_fq
-    end do
-    delt_liq=delta
-  end if
-  write (6,*) ""
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,800) "||           ENTERING THE DICHOTOMY                ||"
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,*) ""
-  write (6,800) "STARTING PARAMETERS                                  "
-  write (6,*) ""
-  write (6,901) "delt_liq   = ",delt_liq
-  write (6,901) "delt_glas  = ",delt_glas
-  write (6,901) ""
-  write (6,901) "density    = ",density
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .true.) then
-    write (6,901) "eigen_infl = ",eigenvalue_inflex
-    write (6,901) "lamb_infl  = ",lambda_inflex
-  end if
-  write (6,901) "conv_fq    = ",conv_fq
-  do 
-    call cpu_time(iter_start)
-    iter=iter+1
-    delta=(delt_liq+delt_glas)/2.0d0
-    write (6,*) ""
-    write (6,*) "                 ITERATION ",iter
-    write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-    call struct (density,delta,sigma,closure,mix_param,cr_init)
-    call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-    call fileman('fq.dat',6,11,1)
-    do i=0,a_size
-      read (11,*) q(i),fq(i)
-    end do
-    call fileman('fq.dat',6,11,0)
-    conv_fq=fq(witb(fq,a_size))
-    if (conv_fq .lt. prec_fq) then
-      delt_liq=delta
-    else if (conv_fq .gt. prec_fq) then
-      delt_glas=delta
-    end if
-    call cpu_time(iter_end)
-    write (6,*) ""
+  if (var_param .eq. 'delt') then
     write (6,901) "delt_liq   = ",delt_liq
     write (6,901) "delt_glas  = ",delt_glas
     write (6,*) ""
     write (6,901) "density    = ",density
-    write (6,901) "eigenvalue = ",eigenvalue
-    write (6,901) "lambda     = ",lambda
+  else if (var_param .eq. 'dens') then
+    write (6,901) "dens_liq   = ",dens_liq
+    write (6,901) "dens_glas  = ",dens_glas
+    write (6,*) ""
+    write (6,901) "delta      = ",delta
+  end if
+  write (6,*) ""
+  write (6,901) "eigenvalue = ",eigenvalue
+  write (6,901) "lambda     = ",lambda
+  if (trans_mode .eq. 'disc') then
     write (6,903) "inflexion  = ",inflex
-    if (inflex .eqv. .true.) then
+    if ((inflex .eqv. .true.) .and. (fast .eqv. .false.)) then
       write (6,901) "eigen_infl = ",eigenvalue_inflex
       write (6,901) "lamb_infl  = ",lambda_inflex
+      inflex=.false.                                  
     end if
-    write (6,901) "conv_fq    = ",conv_fq
-    write (6,901) ""
-    write (6,*) "ITERATION TIME ", iter_end-iter_start,"s"
-    if (dabs(eigenvalue-1.0d0) .le. prec_eigen_disc) then
-      exit
-    end if
-  end do
-  write (6,*) ""
-  write (6,800) "               CONVERGENCE REACHED                   "
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,901) "delt_liq   = ",delt_liq
-  write (6,901) "delt_glas  = ",delt_glas
-  write (6,*) ""
-  write (6,901) "density    = ",density
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .true.) then
-    write (6,901) "eigen_infl = ",eigenvalue_inflex
-    write (6,901) "lamb_infl  = ",lambda_inflex
+    if (fast .eqv. .false.) write (6,902) "conv_fq    = ",conv_fq
   end if
-  write (6,901) "conv_fq    = ",conv_fq
-  call fileman('final_res',9,11,1)
-  write (11,'(f22.16,f22.16,f22.16,f22.16)') density,density,delt_liq,delt_glas,lambda,eigenvalue
-  call fileman('final_res',9,11,0)
 
 
 
 
 
-
-
-!FAST DICH DELT DISC
-else if ((calc_mode .eq. 'dich') .and. (fast .eqv. .true.) .and. (var_param .eq. 'delt') .and. (trans_mode .eq. 'disc')) then
-  fast=.false.
-  write (6,*) ""
-  write (6,800) "                  FIRST RESULTS                      "
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  call struct (density,delta,sigma,closure,mix_param,cr_init)
-  call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-  write (6,*) ""
-  write (6,901) "density    = ",density
-  write (6,901) "delta      = ",delta
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  call fileman('fq.dat',6,11,1)
-  do i=0,a_size
-    read (11,*) q(i),fq(i)
-  end do
-  call fileman('fq.dat',6,11,0)
-  conv_fq=fq(witb(fq,a_size))
-  write (6,901) "conv_fq    = ",conv_fq
-  if (conv_fq .lt. prec_fq) then
-    do while (conv_fq .lt. prec_fq)
-      delt_liq=delta
-      delta=delta*var_incr
-      write (6,*) ""
-      write (6,800) "          Looking for the transition point           "
-      write (6,800) "-----------------------------------------------------"
-      call struct (density,delta,sigma,closure,mix_param,cr_init)
-      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-      write (6,*) ""
-      write (6,901) "delt_liq   = ",delt_liq
-      write (6,901) "delt_glas  = ",delt_glas
-      write (6,*) ""
-      write (6,901) "density    = ",density
-      write (6,901) "eigenvalue = ",eigenvalue
-      write (6,901) "lambda     = ",lambda
-      write (6,903) "inflexion  = ",inflex
-      call fileman('fq.dat',6,11,1)
-      do i=0,a_size
-        read (11,*) q(i),fq(i)
-      end do
-      call fileman('fq.dat',6,11,0)
-      conv_fq=fq(witb(fq,a_size))
-      write (6,901) "conv_fq    = ",conv_fq
-    end do
-    delt_glas=delta
-  else if (conv_fq .gt. prec_fq) then
-    do while (conv_fq .gt. prec_fq)
-      delt_glas=delta
-      delta=delta/var_incr
-      write (6,*) ""
-      write (6,800) "          Looking for the transition point           "
-      write (6,800) "-----------------------------------------------------"
-      call struct (density,delta,sigma,closure,mix_param,cr_init)
-      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-      write (6,*) ""
-      write (6,901) "delt_liq   = ",delt_liq
-      write (6,901) "delt_glas  = ",delt_glas
-      write (6,901) ""
-      write (6,901) "density    = ",density
-      write (6,901) "eigenvalue = ",eigenvalue
-      write (6,901) "lambda     = ",lambda
-      write (6,903) "inflexion  = ",inflex
-      call fileman('fq.dat',6,11,1)
-      do i=0,a_size
-        read (11,*) q(i),fq(i)
-      end do
-      call fileman('fq.dat',6,11,0)
-      conv_fq=fq(witb(fq,a_size))
-      write (6,901) "conv_fq    = ",conv_fq
-    end do
-    delt_liq=delta
-  end if
-  fast=.true.
-  write (6,*) ""
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,800) "||           ENTERING THE DICHOTOMY                ||"
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,*) ""
-  write (6,800) "STARTING PARAMETERS                                  "
-  write (6,*) ""
-  write (6,901) "delt_liq   = ",delt_liq
-  write (6,901) "delt_glas  = ",delt_glas
-  write (6,901) ""
-  write (6,901) "density    = ",density
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .false.) then
-    call fileman('fq.dat',6,11,1)
-    do i=0,a_size
-      read (11,*) q(i),fq(i)
-    end do
-    call fileman('fq.dat',6,11,0)
-    conv_fq=fq(witb(fq,a_size))
-    write (6,901) "conv_fq    = ",conv_fq
-  end if
-  do 
-    call cpu_time(iter_start)
-    iter=iter+1
-    delta=(delt_liq+delt_glas)/2.0d0
-    write (6,*) ""
-    write (6,*) "                 ITERATION ",iter
-    write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-    call struct (density,delta,sigma,closure,mix_param,cr_init)
-    call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-    if (inflex .eqv. .true.) then
-      delt_liq=delta
-    else if (inflex .eqv. .false.) then
-      delt_glas=delta
-    end if
-    call cpu_time(iter_end)
-    write (6,*) ""
-    write (6,901) "delt_liq   = ",delt_liq
-    write (6,901) "delt_glas  = ",delt_glas
-    write (6,*) ""
-    write (6,901) "density    = ",density
-    write (6,901) "eigenvalue = ",eigenvalue
-    write (6,901) "lambda     = ",lambda
-    write (6,903) "inflexion  = ",inflex
-    if (inflex .eqv. .false.) then
-      call fileman('fq.dat',6,11,1)
-      do i=0,a_size
-        read (11,*) q(i),fq(i)
-      end do
-      call fileman('fq.dat',6,11,0)
-      conv_fq=fq(witb(fq,a_size))
-      write (6,901) "conv_fq    = ",conv_fq
-    end if
-    write (6,901) ""
-    write (6,*) "ITERATION TIME ", iter_end-iter_start,"s"
-    if (dabs(eigenvalue-1.0d0) .le. prec_eigen_disc) then
-      exit
-    end if
-  end do
-  write (6,*) ""
-  write (6,800) "               CONVERGENCE REACHED                   "
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,901) "delt_liq   = ",delt_liq
-  write (6,901) "delt_glas  = ",delt_glas
-  write (6,*) ""
-  write (6,901) "density    = ",density
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .false.) then
-    call fileman('fq.dat',6,11,1)
-    do i=0,a_size
-      read (11,*) q(i),fq(i)
-    end do
-    call fileman('fq.dat',6,11,0)
-    conv_fq=fq(witb(fq,a_size))
-    write (6,901) "conv_fq    = ",conv_fq
-  end if
-  call fileman('final_res',9,11,1)
-  write (11,'(f22.16,f22.16,f22.16,f22.16)') density,density,delt_liq,delt_glas,lambda,eigenvalue
-  call fileman('final_res',9,11,0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-!DICH DENS CONT/LOCA
-!=================================================
-else if ((calc_mode .eq. 'dich') .and. (var_param .eq. 'dens') .and. ((trans_mode .eq. 'cont') .or. (trans_mode .eq. 'loca'))) then
-  write (6,*) ""
-  write (6,800) "                  FIRST RESULTS                      "
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  call struct (density,delta,sigma,closure,mix_param,cr_init)
-  call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-  write (6,901) "density    = ",density
-  write (6,901) "delta      = ",delta
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  if (eigenvalue .gt. 1.0d0) then
-    do while (eigenvalue .gt. 1.0d0)
-      dens_liq=density
-      density=density*var_incr
-      write (6,*) ""
-      write (6,800) "          Looking for the transition point           "
-      write (6,800) "-----------------------------------------------------"
-      call struct (density,delta,sigma,closure,mix_param,cr_init)
-      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-      write (6,901) "dens_liq   = ",dens_liq
-      write (6,901) "dens_glas  = ",dens_glas
-      write(6,*) ""
-      write (6,901) "delta      = ",delta
-      write (6,901) "eigenvalue = ",eigenvalue
-      write (6,901) "lambda     = ",lambda
-    end do
-    dens_glas=density
-  else if (eigenvalue .lt. 1.0d0) then
-    do while (eigenvalue .lt. 1.0d0)
-      dens_glas=density
-      density=density/var_incr
-      write (6,*) ""
-      write (6,800) "          Looking for the transition point           "
-      write (6,800) "-----------------------------------------------------"
-      call struct (density,delta,sigma,closure,mix_param,cr_init)
-      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-      write (6,901) "dens_liq   = ",dens_liq
-      write (6,901) "dens_glas  = ",dens_glas
-      write (6,901) ""
-      write (6,901) "delta      = ",delta
-      write (6,901) "eigenvalue = ",eigenvalue
-      write (6,901) "lambda     = ",lambda
-    end do
-    dens_liq=density
-  end if
-  write (6,*) ""
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,800) "||           ENTERING THE DICHOTOMY                ||"
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,*) ""
-  write (6,800) "STARTING PARAMETERS                                  "
-  write (6,*) ""
-  write (6,901) "dens_liq   = ",dens_liq
-  write (6,901) "dens_glas  = ",dens_glas
-  write (6,901) ""
-  write (6,901) "delta      = ",delta
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  do 
-    call cpu_time(iter_start)
-    iter=iter+1
-    density=(dens_liq+dens_glas)/2.0d0
-    write (6,*) ""
-    write (6,*) "                 ITERATION ",iter
-    write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-    call struct (density,delta,sigma,closure,mix_param,cr_init)
-    call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-    if (eigenvalue .gt. 1.0d0) then
-      dens_liq=density
-    else if (eigenvalue .lt. 1.0d0) then
-      dens_glas=density
-    end if
-    call cpu_time(iter_end)
-    write (6,901) "dens_liq   = ",dens_liq
-    write (6,901) "dens_glas  = ",dens_glas
-    write (6,901) ""
-    write (6,901) "delta      = ",delta
-    write (6,901) "eigenvalue = ",eigenvalue
-    write (6,901) "lambda     = ",lambda
-    write (6,901) ""
-    write (6,*) "ITERATION TIME ", iter_end-iter_start,"s"
-    if (dabs(eigenvalue-1.0d0) .le. prec_eigen_cont) then
-      exit
-    end if
-  end do
-  write (6,*) ""
-  write (6,800) "               CONVERGENCE REACHED                   "
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,901) "dens_liq =   ",dens_liq
-  write (6,901) "dens_glas =  ",dens_glas
-  write (6,901) ""
-  write (6,901) "delta      = ",delta
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  call fileman('final_res',9,11,1)
-  write (11,'(f22.16,f22.16,f22.16,f22.16)') dens_liq,dens_glas,delta,delta,lambda,eigenvalue
-  call fileman('final_res',9,11,0)
-
-
-
-
-
-
-
-
-
-
-
-!DICH DENS DISC
-!=================================================
-else if ((calc_mode .eq. 'dich') .and. (var_param .eq. 'dens') .and. (trans_mode .eq. 'disc') .and. (fast .eqv. .false.)) then
-  eigenvalue=0.0d0
-  lambda=0.0d0
-  eigenvalue_inflex=0.0d0
-  lambda_inflex=0.0d0
-  write (6,*) ""
-  write (6,800) "                  FIRST RESULTS                      "
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  call struct (density,delta,sigma,closure,mix_param,cr_init)
-  call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-  call fileman('fq.dat',6,11,1)
-  do i=0,a_size
-    read (11,*) q(i),fq(i)
-  end do
-  call fileman('fq.dat',6,11,0)
-  conv_fq=fq(witb(fq,a_size))
-  write (6,*) ""
-  write (6,901) "density    = ",density
-  write (6,901) "delta      = ",delta
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .true.) then
-    write (6,901) "eigen_infl = ",eigenvalue_inflex
-    write (6,901) "lamb_infl  = ",lambda_inflex
-    inflex=.false.
-  end if
-  write (6,902) "conv_fq    = ",conv_fq
-  if (conv_fq .lt. prec_fq) then
-    do while (conv_fq .lt. prec_fq)
-      dens_liq=density
-      density=density*var_incr
-      write (6,*) ""
-      write (6,800) "          Looking for the transition point           "
-      write (6,800) "-----------------------------------------------------"
-      call struct (density,delta,sigma,closure,mix_param,cr_init)
-      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-      call fileman('fq.dat',6,11,1)
-      do i=0,a_size
-        read (11,*) q(i),fq(i)
-      end do
-      call fileman('fq.dat',6,11,0)
-      conv_fq=fq(witb(fq,a_size))
-      write (6,*) ""
-      write (6,901) "dens_liq   = ",dens_liq
-      write (6,901) "dens_glas  = ",dens_glas
-      write(6,*) ""
-      write (6,901) "delta      = ",delta
-      write (6,901) "eigenvalue = ",eigenvalue
-      write (6,901) "lambda     = ",lambda
-      write (6,903) "inflexion  = ",inflex
-      if (inflex .eqv. .true.) then
-        write (6,901) "eigen_infl = ",eigenvalue_inflex
-        write (6,901) "lamb_infl  = ",lambda_inflex
-      end if
-      write (6,902) "conv_fq    = ",conv_fq
-    end do
-    dens_glas=density
-  else if (conv_fq .gt. prec_fq) then
-    do while (conv_fq .gt. prec_fq)
-      dens_glas=density
-      density=density/var_incr
-      write (6,*) ""
-      write (6,800) "          Looking for the transition point           "
-      write (6,800) "-----------------------------------------------------"
-      call struct (density,delta,sigma,closure,mix_param,cr_init)
-      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-      call fileman('fq.dat',6,11,1)
-      do i=0,a_size
-        read (11,*) q(i),fq(i)
-      end do
-      call fileman('fq.dat',6,11,0)
-      conv_fq=fq(witb(fq,a_size))
-      write (6,*) ""
-      write (6,901) "dens_liq   = ",dens_liq
-      write (6,901) "dens_glas  = ",dens_glas
-      write (6,901) ""
-      write (6,901) "delta      = ",delta
-      write (6,901) "eigenvalue = ",eigenvalue
-      write (6,901) "lambda     = ",lambda
-      write (6,903) "inflexion  = ",inflex
-      if (inflex .eqv. .true.) then
-        write (6,901) "eigen_infl = ",eigenvalue_inflex
-        write (6,901) "lamb_infl  = ",lambda_inflex
-      end if
-      write (6,902) "conv_fq    = ",conv_fq
-    end do
-    dens_liq=density
-  end if
-  write (6,*) ""
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,800) "||           ENTERING THE DICHOTOMY                ||"
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,*) ""
-  write (6,800) "STARTING PARAMETERS                                  "
-  write (6,*) ""
-  write (6,901) "dens_liq   = ",dens_liq
-  write (6,901) "dens_glas  = ",dens_glas
-  write (6,901) ""
-  write (6,901) "delta      = ",delta
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .true.) then
-    write (6,901) "eigen_infl = ",eigenvalue_inflex
-    write (6,901) "lamb_infl  = ",lambda_inflex
-  end if
-  write (6,902) "conv_fq    = ",conv_fq
-  do 
-    call cpu_time(iter_start)
-    iter=iter+1
-    density=(dens_liq+dens_glas)/2.0d0
-    write (6,*) ""
-    write (6,*) "                 ITERATION ",iter
-    write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-    call struct (density,delta,sigma,closure,mix_param,cr_init)
-    call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-    call fileman('fq.dat',6,11,1)
-    do i=0,a_size
-      read (11,*) q(i),fq(i)
-    end do
-    call fileman('fq.dat',6,11,0)
-    conv_fq=fq(witb(fq,a_size))
-    if (conv_fq .lt. prec_fq) then
-      dens_liq=density
-    else if (conv_fq .gt. prec_fq) then
-      dens_glas=density
-    end if
-    call cpu_time(iter_end)
-    write (6,*) ""
-    write (6,901) "dens_liq   = ",dens_liq
-    write (6,901) "dens_glas  = ",dens_glas
-    write (6,901) ""
-    write (6,901) "delta      = ",delta
-    write (6,901) "eigenvalue = ",eigenvalue
-    write (6,901) "lambda     = ",lambda
-    write (6,903) "inflexion  = ",inflex
-    if (inflex .eqv. .true.) then
-      write (6,901) "eigen_infl = ",eigenvalue_inflex
-      write (6,901) "lamb_infl  = ",lambda_inflex
-    end if
-    write (6,902) "conv_fq    = ",conv_fq
-    write (6,901) ""
-    write (6,*) "ITERATION TIME ", iter_end-iter_start,"s"
-    if (dabs(eigenvalue-1.0d0) .le. prec_eigen_disc) then
-      exit
-    end if
-  end do
-  write (6,*) ""
-  write (6,800) "               CONVERGENCE REACHED                   "
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,901) "dens_liq   = ",dens_liq
-  write (6,901) "dens_glas  = ",dens_glas
-  write (6,901) ""
-  write (6,901) "delta      = ",delta
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
- if (inflex .eqv. .true.) then
-    write (6,901) "eigen_infl = ",eigenvalue_inflex
-    write (6,901) "lamb_infl  = ",lambda_inflex
-  end if
-  write (6,902) "conv_fq    = ",conv_fq
-  call fileman('final_res',9,11,1)
-  write (11,'(f22.16,f22.16,f22.16,f22.16)') dens_liq,dens_glas,delta,delta,lambda,eigenvalue
-  call fileman('final_res',9,11,0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-!FAST DICH DENS DISC
-!=================================================
-else if ((calc_mode .eq. 'dich') .and. (fast .eqv. .true.) .and. (var_param .eq. 'dens') .and. (trans_mode .eq. 'disc')) then
-  fast=.false.
-  write (6,*) ""
-  write (6,800) "                  FIRST RESULTS                      "
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  call struct (density,delta,sigma,closure,mix_param,cr_init)
-  call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-  write (6,*) ""
-  write (6,901) "density    = ",density
-  write (6,901) "delta      = ",delta
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  call fileman('fq.dat',6,11,1)
-  do i=0,a_size
-    read (11,*) q(i),fq(i)
-  end do
-  call fileman('fq.dat',6,11,0)
-  conv_fq=fq(witb(fq,a_size))
-  write (6,901) "conv_fq    = ",conv_fq
-  if (conv_fq .lt. prec_fq) then
-    do while (conv_fq .lt. prec_fq)
-      dens_liq=density
-      density=density*var_incr
-      write (6,*) ""
-      write (6,800) "          Looking for the transition point           "
-      write (6,800) "-----------------------------------------------------"
-      call struct (density,delta,sigma,closure,mix_param,cr_init)
-      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-      write (6,*) ""
-      write (6,901) "dens_liq   = ",dens_liq
-      write (6,901) "dens_glas  = ",dens_glas
-      write(6,*) ""
-      write (6,901) "delta      = ",delta
-      write (6,901) "eigenvalue = ",eigenvalue
-      write (6,901) "lambda     = ",lambda
-      write (6,903) "inflexion  = ",inflex
-      call fileman('fq.dat',6,11,1)
-      do i=0,a_size
-        read (11,*) q(i),fq(i)
-      end do
-      call fileman('fq.dat',6,11,0)
-      conv_fq=fq(witb(fq,a_size))
-      write (6,901) "conv_fq    = ",conv_fq
-    end do
-    dens_glas=density
-  else if (conv_fq .gt. prec_fq) then
-    do while (conv_fq .gt. prec_fq)
-      dens_glas=density
-      density=density/var_incr
-      write (6,*) ""
-      write (6,800) "          Looking for the transition point           "
-      write (6,800) "-----------------------------------------------------"
-      call struct (density,delta,sigma,closure,mix_param,cr_init)
-      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-      write (6,*) ""
-      write (6,901) "dens_liq   = ",dens_liq
-      write (6,901) "dens_glas  = ",dens_glas
-      write (6,901) ""
-      write (6,901) "delta      = ",delta
-      write (6,901) "eigenvalue = ",eigenvalue
-      write (6,901) "lambda     = ",lambda
-      write (6,903) "inflexion  = ",inflex
-      call fileman('fq.dat',6,11,1)
-      do i=0,a_size
-        read (11,*) q(i),fq(i)
-      end do
-      call fileman('fq.dat',6,11,0)
-      conv_fq=fq(witb(fq,a_size))
-      write (6,901) "conv_fq    = ",conv_fq
-    end do
-    dens_liq=density
-  end if
-  fast=.true.
-  write (6,*) ""
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,800) "||           ENTERING THE DICHOTOMY                ||"
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,*) ""
-  write (6,800) "STARTING PARAMETERS                                  "
-  write (6,*) ""
-  write (6,901) "dens_liq   = ",dens_liq
-  write (6,901) "dens_glas  = ",dens_glas
-  write (6,901) ""
-  write (6,901) "delta      = ",delta
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .false.) then
-    call fileman('fq.dat',6,11,1)
-    do i=0,a_size
-      read (11,*) q(i),fq(i)
-    end do
-    call fileman('fq.dat',6,11,0)
-    conv_fq=fq(witb(fq,a_size))
-    write (6,901) "conv_fq    = ",conv_fq
-  end if
-  do 
-    call cpu_time(iter_start)
-    iter=iter+1
-    density=(dens_liq+dens_glas)/2.0d0
-    write (6,*) ""
-    write (6,*) "                 ITERATION ",iter
-    write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-    call struct (density,delta,sigma,closure,mix_param,cr_init)
-    call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-    if (inflex .eqv. .true.) then
-      dens_liq=density
-    else if (inflex .eqv. .false.) then
-      dens_glas=density
-    end if
-    call cpu_time(iter_end)
-    write (6,*) ""
-    write (6,901) "dens_liq   = ",dens_liq
-    write (6,901) "dens_glas  = ",dens_glas
-    write (6,901) ""
-    write (6,901) "delta      = ",delta
-    write (6,901) "eigenvalue = ",eigenvalue
-    write (6,901) "lambda     = ",lambda
-    write (6,903) "inflexion  = ",inflex
-    if (inflex .eqv. .false.) then
-      call fileman('fq.dat',6,11,1)
-      do i=0,a_size
-        read (11,*) q(i),fq(i)
-      end do
-      call fileman('fq.dat',6,11,0)
-      conv_fq=fq(witb(fq,a_size))
-      write (6,901) "conv_fq    = ",conv_fq
-    end if
-    write (6,901) ""
-    write (6,*) "ITERATION TIME ", iter_end-iter_start,"s"
-    if (dabs(eigenvalue-1.0d0) .le. prec_eigen_disc) then
-      exit
-    end if
-  end do
-  write (6,*) ""
-  write (6,800) "               CONVERGENCE REACHED                   "
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,901) "dens_liq   = ",dens_liq
-  write (6,901) "dens_glas  = ",dens_glas
-  write (6,901) ""
-  write (6,901) "delta      = ",delta
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .false.) then
-    call fileman('fq.dat',6,11,1)
-    do i=0,a_size
-      read (11,*) q(i),fq(i)
-    end do
-    call fileman('fq.dat',6,11,0)
-    conv_fq=fq(witb(fq,a_size))
-    write (6,901) "conv_fq    = ",conv_fq
-  end if
-  call fileman('final_res',9,11,1)
-  write (11,'(f22.16,f22.16,f22.16,f22.16)') dens_liq,dens_glas,delta,delta,lambda,eigenvalue
-  call fileman('final_res',9,11,0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-!REST DELT DISC
-!=================================================
-else if ((trans_mode .eq. 'disc') .and. (calc_mode .eq. 'rest') .and. (var_param .eq. 'delt') .and. (fast .eqv. .false.)) then
- conv_fq=1.0d0
-  write (6,*) ""
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,800) "||           ENTERING THE DICHOTOMY                ||"
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,*) ""
-  write (6,800) "STARTING PARAMETERS                                  "
-  write (6,*) ""
-  write (6,901) "delt_liq   = ",delt_liq
-  write (6,901) "delt_glas  = ",delt_glas
-  write (6,901) ""
-  write (6,901) "density    = ",density
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .true.) then
-    write (6,901) "eigen_infl = ",eigenvalue_inflex
-    write (6,901) "lamb_infl  = ",lambda_inflex
-  end if
-  write (6,901) "conv_fq    = ",conv_fq
-  do 
-    call cpu_time(iter_start)
-    iter=iter+1
-    delta=(delt_liq+delt_glas)/2.0d0
-    write (6,*) ""
-    write (6,*) "                 ITERATION ",iter
-    write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-    call struct (density,delta,sigma,closure,mix_param,cr_init)
-    call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-    call fileman('fq.dat',6,11,1)
-    do i=0,a_size
-      read (11,*) q(i),fq(i)
-    end do
-    call fileman('fq.dat',6,11,0)
-    conv_fq=fq(witb(fq,a_size))
-    if (conv_fq .lt. prec_fq) then
-      delt_liq=delta
-    else if (conv_fq .gt. prec_fq) then
-      delt_glas=delta
-    end if
-    call cpu_time(iter_end)
-    write (6,*) ""
-    write (6,901) "delt_liq   = ",delt_liq
-    write (6,901) "delt_glas  = ",delt_glas
-    write (6,*) ""
-    write (6,901) "density    = ",density
-    write (6,901) "eigenvalue = ",eigenvalue
-    write (6,901) "lambda     = ",lambda
-    write (6,903) "inflexion  = ",inflex
-    if (inflex .eqv. .true.) then
-      write (6,901) "eigen_infl = ",eigenvalue_inflex
-      write (6,901) "lamb_infl  = ",lambda_inflex
-    end if
-    write (6,901) "conv_fq    = ",conv_fq
-    write (6,901) ""
-    write (6,*) "ITERATION TIME ", iter_end-iter_start,"s"
-    if (dabs(eigenvalue-1.0d0) .le. prec_eigen_disc) then
-      exit
-    end if
-  end do
-  write (6,*) ""
-  write (6,800) "               CONVERGENCE REACHED                   "
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,901) "delt_liq   = ",delt_liq
-  write (6,901) "delt_glas  = ",delt_glas
-  write (6,*) ""
-  write (6,901) "density    = ",density
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .true.) then
-    write (6,901) "eigen_infl = ",eigenvalue_inflex
-    write (6,901) "lamb_infl  = ",lambda_inflex
-  end if
-  write (6,901) "conv_fq    = ",conv_fq
-  call fileman('final_res',9,11,1)
-  write (11,'(f22.16,f22.16,f22.16,f22.16)') density,density,delt_liq,delt_glas,lambda,eigenvalue
-  call fileman('final_res',9,11,0)
-
-
-
-
-
-
-
-
-
-
-
-!FAST REST DELT DISC
-!=================================================
-else if ((trans_mode .eq. 'disc') .and. (calc_mode .eq. 'rest') .and. (var_param .eq. 'delt') .and. (fast .eqv. .true.)) then
- conv_fq=1.0d0
-  write (6,*) ""
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,800) "||           ENTERING THE DICHOTOMY                ||"
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,*) ""
-  write (6,800) "STARTING PARAMETERS                                  "
-  write (6,*) ""
-  write (6,901) "delt_liq   = ",delt_liq
-  write (6,901) "delt_glas  = ",delt_glas
-  write (6,901) ""
-  write (6,901) "density    = ",density
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .false.) then
-    call fileman('fq.dat',6,11,1)
-    do i=0,a_size
-      read (11,*) q(i),fq(i)
-    end do
-    call fileman('fq.dat',6,11,0)
-    conv_fq=fq(witb(fq,a_size))
-    write (6,901) "conv_fq    = ",conv_fq
-  end if
-  do 
-    call cpu_time(iter_start)
-    iter=iter+1
-    delta=(delt_liq+delt_glas)/2.0d0
-    write (6,*) ""
-    write (6,*) "                 ITERATION ",iter
-    write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-    call struct (density,delta,sigma,closure,mix_param,cr_init)
-    call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-    call fileman('fq.dat',6,11,1)
-    do i=0,a_size
-      read (11,*) q(i),fq(i)
-    end do
-    call fileman('fq.dat',6,11,0)
-    conv_fq=fq(witb(fq,a_size))
-    if (inflex .eqv. .true.) then
-      delt_liq=delta
-    else if (inflex .eqv. .false.) then
-      delt_glas=delta
-    end if
-    call cpu_time(iter_end)
-    write (6,*) ""
-    write (6,901) "delt_liq   = ",delt_liq
-    write (6,901) "delt_glas  = ",delt_glas
-    write (6,*) ""
-    write (6,901) "density    = ",density
-    write (6,901) "eigenvalue = ",eigenvalue
-    write (6,901) "lambda     = ",lambda
-    write (6,903) "inflexion  = ",inflex
-    if (inflex .eqv. .false.) then
-      call fileman('fq.dat',6,11,1)
-      do i=0,a_size
-        read (11,*) q(i),fq(i)
-      end do
-      call fileman('fq.dat',6,11,0)
-      conv_fq=fq(witb(fq,a_size))
-      write (6,901) "conv_fq    = ",conv_fq
-    end if
-    write (6,901) ""
-    write (6,*) "ITERATION TIME ", iter_end-iter_start,"s"
-    if (dabs(eigenvalue-1.0d0) .le. prec_eigen_disc) exit
-  end do
-  write (6,*) ""
-  write (6,800) "               CONVERGENCE REACHED                   "
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,901) "delt_liq   = ",delt_liq
-  write (6,901) "delt_glas  = ",delt_glas
-  write (6,*) ""
-  write (6,901) "density    = ",density
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .false.) then
-    call fileman('fq.dat',6,11,1)
-    do i=0,a_size
-      read (11,*) q(i),fq(i)
-    end do
-    call fileman('fq.dat',6,11,0)
-    conv_fq=fq(witb(fq,a_size))
-    write (6,901) "conv_fq    = ",conv_fq
-  end if
-  call fileman('final_res',9,11,1)
-  write (11,'(f22.16,f22.16,f22.16,f22.16)') density,density,delt_liq,delt_glas,lambda,eigenvalue
-  call fileman('final_res',9,11,0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-!DISC REST DENS
-else if ((trans_mode .eq. 'disc') .and. (calc_mode .eq. 'rest') .and. (var_param .eq. 'dens') .and. (fast .eqv. .false.)) then
-  conv_fq=1.0d0
-  write (6,*) ""
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,800) "||           ENTERING THE DICHOTOMY                ||"
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,*) ""
-  write (6,800) "STARTING PARAMETERS                                  "
-  write (6,*) ""
-  write (6,901) "dens_liq   = ",dens_liq
-  write (6,901) "dens_glas  = ",dens_glas
-  write (6,901) ""
-  write (6,901) "delta      = ",delta
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .true.) then
-    write (6,901) "eigen_infl = ",eigenvalue_inflex
-    write (6,901) "lamb_infl  = ",lambda_inflex
-  end if
-  write (6,902) "conv_fq    = ",conv_fq
-  do 
-    call cpu_time(iter_start)
-    iter=iter+1
-    density=(dens_liq+dens_glas)/2.0d0
-    write (6,*) ""
-    write (6,*) "                 ITERATION ",iter
-    write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-    call struct (density,delta,sigma,closure,mix_param,cr_init)
-    call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-    call fileman('fq.dat',6,11,1)
-    do i=0,a_size
-      read (11,*) q(i),fq(i)
-    end do
-    call fileman('fq.dat',6,11,0)
-    conv_fq=fq(witb(fq,a_size))
-    if (conv_fq .lt. prec_fq) then
-      dens_liq=density
-    else if (conv_fq .gt. prec_fq) then
-      dens_glas=density
-    end if
-    call cpu_time(iter_end)
-    write (6,*) ""
-    write (6,901) "dens_liq   = ",dens_liq
-    write (6,901) "dens_glas  = ",dens_glas
-    write (6,901) ""
-    write (6,901) "delta      = ",delta
-    write (6,901) "eigenvalue = ",eigenvalue
-    write (6,901) "lambda     = ",lambda
-    write (6,903) "inflexion  = ",inflex
-    if (inflex .eqv. .true.) then
-      write (6,901) "eigen_infl = ",eigenvalue_inflex
-      write (6,901) "lamb_infl  = ",lambda_inflex
-    end if
-    write (6,902) "conv_fq    = ",conv_fq
-    write (6,901) ""
-    write (6,*) "ITERATION TIME ", iter_end-iter_start,"s"
-    if (dabs(eigenvalue-1.0d0) .le. prec_eigen_disc) then
-      exit
-    end if
-  end do
-  write (6,*) ""
-  write (6,800) "               CONVERGENCE REACHED                   "
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,901) "dens_liq   = ",dens_liq
-  write (6,901) "dens_glas  = ",dens_glas
-  write (6,901) ""
-  write (6,901) "delta      = ",delta
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .true.) then
-    write (6,901) "eigen_infl = ",eigenvalue_inflex
-    write (6,901) "lamb_infl  = ",lambda_inflex
-  end if
-  write (6,902) "conv_fq    = ",conv_fq
-  call fileman('final_res',9,11,1)
-  write (11,'(f22.16,f22.16,f22.16,f22.16)') dens_liq,dens_glas,delta,delta,lambda,eigenvalue
-  call fileman('final_res',9,11,0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-!FAST DISC REST DENS
-else if ((trans_mode .eq. 'disc') .and. (calc_mode .eq. 'rest') .and. (var_param .eq. 'dens') .and. (fast .eqv. .true.)) then
-  conv_fq=1.0d0
-  write (6,*) ""
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,800) "||           ENTERING THE DICHOTOMY                ||"
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,*) ""
-  write (6,800) "STARTING PARAMETERS                                  "
-  write (6,*) ""
-  write (6,901) "dens_liq   = ",dens_liq
-  write (6,901) "dens_glas  = ",dens_glas
-  write (6,901) ""
-  write (6,901) "delta      = ",delta
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .false.) then
-    call fileman('fq.dat',6,11,1)
-    do i=0,a_size
-      read (11,*) q(i),fq(i)
-    end do
-    call fileman('fq.dat',6,11,0)
-    conv_fq=fq(witb(fq,a_size))
-    write (6,901) "conv_fq    = ",conv_fq
-  end if
-  do 
-    call cpu_time(iter_start)
-    iter=iter+1
-    density=(dens_liq+dens_glas)/2.0d0
-    write (6,*) ""
-    write (6,*) "                 ITERATION ",iter
-    write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-    call struct (density,delta,sigma,closure,mix_param,cr_init)
-    call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fq_init)
-    call fileman('fq.dat',6,11,1)
-    do i=0,a_size
-      read (11,*) q(i),fq(i)
-    end do
-    call fileman('fq.dat',6,11,0)
-    conv_fq=fq(witb(fq,a_size))
-    if (inflex .eqv. .true.) then
-      dens_liq=density
-    else if (fast .eqv. .false.) then
-      dens_glas=density
-    end if
-    call cpu_time(iter_end)
-    write (6,*) ""
-    write (6,901) "dens_liq   = ",dens_liq
-    write (6,901) "dens_glas  = ",dens_glas
-    write (6,901) ""
-    write (6,901) "delta      = ",delta
-    write (6,901) "eigenvalue = ",eigenvalue
-    write (6,901) "lambda     = ",lambda
-    write (6,903) "inflexion  = ",inflex
-    if (inflex .eqv. .false.) then
-      call fileman('fq.dat',6,11,1)
-      do i=0,a_size
-        read (11,*) q(i),fq(i)
-      end do
-      call fileman('fq.dat',6,11,0)
-      conv_fq=fq(witb(fq,a_size))
-      write (6,901) "conv_fq    = ",conv_fq
-    end if
-    write (6,901) ""
-    write (6,*) "ITERATION TIME ", iter_end-iter_start,"s"
-    if (dabs(eigenvalue-1.0d0) .le. prec_eigen_disc) then
-      exit
-    end if
-  end do
-  write (6,*) ""
-  write (6,800) "               CONVERGENCE REACHED                   "
-  write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,901) "dens_liq   = ",dens_liq
-  write (6,901) "dens_glas  = ",dens_glas
-  write (6,901) ""
-  write (6,901) "delta      = ",delta
-  write (6,901) "eigenvalue = ",eigenvalue
-  write (6,901) "lambda     = ",lambda
-  write (6,903) "inflexion  = ",inflex
-  if (inflex .eqv. .false.) then
-    call fileman('fq.dat',6,11,1)
-    do i=0,a_size
-      read (11,*) q(i),fq(i)
-    end do
-    call fileman('fq.dat',6,11,0)
-    conv_fq=fq(witb(fq,a_size))
-    write (6,901) "conv_fq    = ",conv_fq
-  end if
-  call fileman('final_res',9,11,1)
-  write (11,'(f22.16,f22.16,f22.16,f22.16)') dens_liq,dens_glas,delta,delta,lambda,eigenvalue
-  call fileman('final_res',9,11,0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-!DICH LAMB CONT
-!=================================================
 else if ((trans_mode .eq. 'cont') .and. (calc_mode .eq. 'dich') .and. (var_param .eq. 'lamb')) then
   write (6,*) ""
   write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
@@ -1691,7 +637,7 @@ else if ((trans_mode .eq. 'cont') .and. (calc_mode .eq. 'dich') .and. (var_param
       else if (eigenvalue .gt. 1.0d0) then
         delt_glas=delta
       end if
-      if (dabs(eigenvalue-1.0d0) .le. prec_eigen_cont) exit
+      if (dabs(eigenvalue-1.0d0) .le. prec_eigen) exit
     end do
     if (lambda .lt. 1.0d0) then
       delt_li_lo=delt_liq
@@ -1733,15 +679,21 @@ else if ((trans_mode .eq. 'cont') .and. (calc_mode .eq. 'dich') .and. (var_param
   write (6,901) "delt_li_hi = ",delt_li_hi
   write (6,901) "delt_gl_hi = ",delt_gl_hi
   write (6,901) "lamb_hi    = ",lamb_hi
+
 end if
-
+    
+ 
 write (6,*) ""
-
 call cpu_time(calc_end)
 write (6,'(a17,f11.2,a)') "CALCULATION TIME ",calc_end,"s"
-
 call date_and_time(DATE=d,TIME=t)
 write (6,'(a21,a8,a,a10)') "CALCULATION ENDED ON ",d," ",t
 
+call fileman('final_res',9,11,1)
+  write (11,'(f22.16,f22.16,f22.16,f22.16)') density,density,delt_liq,delt_glas,lambda,eigenvalue
+call fileman('final_res',9,11,0)
 
-end program
+
+
+ 
+end program 

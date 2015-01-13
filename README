@@ -14,7 +14,8 @@ NO DEFAULT VALUE
 **********************
 closure    hncc HyperNetted Chain closure
 closure    msac Mean Square Approximation closure
-closure    expc Exponential closure, also called ORPA
+closure    orpa Optimized Random Phase Approximation
+                (not stable yet)
 
 NO DEFAULT VALUE
 
@@ -54,6 +55,8 @@ cr_init    pyev Percus-Yevick initialization
 cr_init    hncc Hypernetted Chain initialization
 cr_init    zero Zero all the way
 cr_init    file Read the arrays from existing files present in the working directory
+
+The files will be read if found in teh working directory. Otherwise the option is applied.
 
 DEFAULT VALUE pyev
 

@@ -166,7 +166,8 @@ do i=0,2**p2 !K(r)
 end do
 
 !Test the existence of a file named cr.dat
-if (cr_init .eq. 'file') then
+inquire(file='cr.dat',exist=fileex)
+if (fileex .eqv. .true.) then
   call fileman(crfile,len(crfile),11,1)
   do i=0,2**p2
     read (11,*) r(i),cr(i)
@@ -177,7 +178,7 @@ else if (cr_init .eq. 'pyev') then
   do i=0,disc-1 !cr
     cr(i)=-lamb1-6.0d0*eta*lamb2*r(i)-0.5d0*eta*lamb1*r(i)**3 !py
   end do
-  cr(disc)=(-lamb1-6.0d0*eta*lamb2*r(i)-0.5d0*eta*lamb1*r(i)**3)/2.0d0 !py
+  cr(disc)=(-lamb1-6.0d0*eta*lamb2*r(disc-1)-0.5d0*eta*lamb1*r(disc-1)**3)/2.0d0 !py
   do i=disc+1,2**p2
     cr(i)=0.0d0 !py
   end do
@@ -186,7 +187,7 @@ else if (cr_init .eq. 'hncc') then
   do i=0,disc-1 !cr
     cr(i)=-1.0d0 !hnc
   end do
-  cr(disc)=(exp(k(disc))-2.0d0)/2.0d0 !hnc
+  cr(disc)=(exp(k(disc+1))-2.0d0)/2.0d0 !hnc
   do i=disc+1,2**p2
     cr(i)=exp(k(i))-1.0d0 !hnc
   end do
@@ -198,7 +199,8 @@ else if (cr_init .eq. 'zero') then
 
 end if
 
-if (cr_init .eq. 'file') then
+inquire(file='cr.dat',exist=fileex)
+if (fileex .eqv. .true.) then
   call fileman(cdrfile,len(cdrfile),11,1)
   do i=0,2**p2
     read (11,*) r(i),cdr(i)
@@ -272,7 +274,8 @@ do while (convergence .gt. prec)
       cr2(i)=-1.0d0-gamr(i)
       cdr2(i)=dexp(k(i)+gamdr(i))-1.0d0-gamdr(i)
     end do    
-    cr2(disc)=(dexp(k(disc)+gamr(disc))-2.0d0-2.0d0*gamr(disc))/2.0d0
+    cr2(disc)=0.5d0*dexp(gamr(disc))-1.0d0-gamdr(disc)
+!    cr2(disc)=(dexp(k(disc+1)+gamr(disc+1))-2.0d0-gamr(disc-1)-gamdr(disc+1))/2.0d0
     cdr2(disc)=dexp(k(disc)+gamdr(disc))-1.0d0-gamdr(disc)
     do i=disc+1,2**p2
       cr2(i)=dexp(k(i)+gamr(i))-1.0d0-gamr(i)
@@ -285,7 +288,8 @@ do while (convergence .gt. prec)
       cr2(i)=-1.0d0-gamr(i)
       cdr2(i)=k(i)
     end do    
-    cr2(disc)=(k(disc+1)-1.0d0-gamr(disc+1))/2.0d0
+!    cr2(disc)=(k(disc+1)-1.0d0-gamr(disc-1))/2.0d0
+    cr2(disc)=(k(disc)-1.0d0-gamr(disc))/2.0d0
     cdr2(disc)=k(disc)
     do i=disc+1,2**p2
       cr2(i)=k(i)
@@ -344,7 +348,8 @@ do while (convergence .gt. prec)
     do i=0,disc-1
       hr(i)=-1.0d0
     end do
-    hr(disc)=(gamr(disc+1)+cr(disc+1)-1.0d0)/2.0d0
+!    hr(disc)=(gamr(disc+1)+cr(disc+1)-1.0d0)/2.0d0
+    hr(disc)=(gamr(disc)+cr(disc)-1.0d0)/2.0d0
     do i=disc+1,2**p2
       hr(i)=gamr(i)+cr(i) !hr
     end do
@@ -389,9 +394,17 @@ if (density .eq. 0.0d0) then
 
   end if
 
+  call fft3s(0.0,hdr(0),p2,r(2**p2),hdq(0),1,0)
+  call fft3s(0.0,hr(0),p2,r(2**p2),hq(0),1,0)
+
 end if
 
-call fft3s(0.0,hdr(0),p2,r(2**p2),hdq(0),1,0)
+
+
+
+
+
+
 
 
 !Calculation of the reference system for EXPC
@@ -401,7 +414,7 @@ if (closure .eq. 'expc') then
   do i=0,disc-1 !cr
     crref(i)=-lamb1-6.0d0*eta*lamb2*r(i)-0.5d0*eta*lamb1*r(i)**3 !py
   end do
-  crref(disc)=(-lamb1-6.0d0*eta*lamb2*r(disc+1)-0.5d0*eta*lamb1*r(disc+1)**3)/2.0d0 !py
+  crref(disc)=(-lamb1-6.0d0*eta*lamb2*r(disc-1)-0.5d0*eta*lamb1*r(disc-1)**3)/2.0d0 !py
   do i=disc+1,2**p2
     crref(i)=0.0d0 !py
   end do
@@ -433,7 +446,8 @@ if (closure .eq. 'expc') then
     hdrref(i)=gamdrref(i)+cdrref(i)
     krenorm(i)=hr(i)-hrref(i) !calculation of the renomalized potential
   end do
-  hrref(disc)=(gamrref(disc+1)+crref(disc+1)-1.0d0)/2.0d0
+  hrref(disc)=(gamrref(disc)+crref(disc)-1.0d0)/2.0d0
+!  hrref(disc)=(gamrref(disc+1)+crref(disc+1)-1.0d0)/2.0d0
   hdrref(disc)=gamdrref(disc)+cdrref(disc)
   krenorm(disc)=hr(disc)-hrref(disc) !calculation of the renomalized potential
   do i=disc+1,2**p2
@@ -442,12 +456,24 @@ if (closure .eq. 'expc') then
     krenorm(i)=hr(i)-hrref(i) !calculation of the renomalized potential
   end do
 
+call fileman('hrref.dat',9,11,1)
+call fileman('hdrref.dat',10,12,1)
+call fileman('krenorm.dat',11,13,1)
+do i=0,2**p2
+  write(11,*) r(i),hrref(i)
+  write(12,*) r(i),hdrref(i)
+  write(13,*) r(i),krenorm(i)
+end do
+call fileman('hrref.dat',9,11,0)
+call fileman('hdrref.dat',10,12,0)
+call fileman('krenorm.dat',11,13,0)
+
   do i=0,disc-1
     hdr(i)=dexp(hdr(i))-1.0d0 !for the disconnected part, the renormalized potential is equal to hdr(i)
     hr(i)=(hrref(i)+1.0d0)*dexp(krenorm(i))-1.0d0
   end do
   hdr(disc)=dexp(hdr(disc))-1.0d0
-  hr(disc)=0.5d0*(2.0d0*hrref(disc)+1.0d0)*dexp(2.0d0*(hr(disc)-hrref(disc)))-1.0d0
+  hr(disc)=0.5d0*(2.0d0*hrref(disc)+1.0d0)*dexp(2.0d0*(hr(disc)-hrref(disc)))-1.0d0 !the limit coming from the right of the value at the discontinuity
   do i=disc+1,2**p2
     hdr(i)=dexp(hdr(i))-1.0d0
     hr(i)=(hrref(i)+1.0d0)*dexp(krenorm(i))-1.0d0
@@ -455,6 +481,11 @@ if (closure .eq. 'expc') then
 
   hq(0)=0.0d0
   hdq(0)=0.0d0
+
+  do i=0,2**p2
+   hq(i)=0.0d0
+   hdq(i)=0.0d0
+  end do
 
   do i=0,2**p2
     hq(0)=hq(0)+4.0d0*pi*(r(i)**2)*hr(i)*dr
@@ -470,8 +501,6 @@ if (closure .eq. 'expc') then
     sdq(i)=density*hdq(i)
   end do
 
-
-
 end if
 
 !Print the stuff
@@ -486,8 +515,6 @@ call fileman(cdrfile,len(cdrfile),17,1)
 call fileman(scqfile,len(scqfile),18,1)
 call fileman(sdqfile,len(sdqfile),19,1)
 
-call fileman('hq.dat',6,20,1)
-
 do i=0,2**p2
   write(11,*) r(i),hr(i)
   write(12,*) r(i),hdr(i)
@@ -498,8 +525,6 @@ do i=0,2**p2
   write(17,*) r(i),cdr(i)
   write(18,*) q(i),scq(i)
   write(19,*) q(i),sdq(i)
-
-  write(20,*) q(i),hq(i)
 end do
 
 call fileman(hrfile,len(hrfile),11,0)
@@ -511,8 +536,5 @@ call fileman(crfile,len(crfile),16,0)
 call fileman(cdrfile,len(cdrfile),17,0)
 call fileman(scqfile,len(scqfile),18,0)
 call fileman(sdqfile,len(sdqfile),19,0)
-
-call fileman('hq.dat',6,20,0)
-
 
 end subroutine
