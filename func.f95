@@ -46,7 +46,7 @@ logical function liq_glas (trans_mode,fast,eigenvalue,conv_fq,flag_inflex)
   double precision::prec_fq=1.0d-6
   logical::fast,flag_inflex
 
-  if (trans_mode .eq. 'cont') then
+  if ((trans_mode .eq. 'cont') .or. (trans_mode .eq. 'loca')) then
     if (eigenvalue .lt. 1.0d0) then
       liq_glas=.true.
     else
