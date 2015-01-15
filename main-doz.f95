@@ -446,7 +446,7 @@ else if (calc_mode .eq. 'dich') then
 
 
 1 if (var_fast .eqv. .true.) fast=.true.
-
+  if ((trans_mode .eq. 'disc') .and. (fast .eqv. .false.)) conv_liq=.true.
 
 
 

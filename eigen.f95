@@ -449,7 +449,6 @@ if (trans_mode .eq. 'cont') then
 
 
 
-!MAKE THE CHANGES FOR THE LOOPS HERE
 else if (trans_mode .eq. 'loca') then
 
   !Calculate the v1_sing arrays
