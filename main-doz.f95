@@ -169,7 +169,7 @@ write (6,*) '     `"888*""      ''Y"      ''8    8888 '
 write (6,*) '        ""                  ''8    888F '
 write (6,*) '                             %k  <88F  '
 write (6,*) '                              "+:*%`   '
-write (6,*) '         VERSION 12012015         '
+write (6,*) '         VERSION 16012015         '
 write (6,*) ''
 write (6,'(a24,a8,a,a10)') "CALCULATION LAUNCHED ON ",d," ",t
                                    

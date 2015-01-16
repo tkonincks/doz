@@ -14,8 +14,8 @@ NO DEFAULT VALUE
 **********************
 closure    hncc HyperNetted Chain closure
 closure    msac Mean Square Approximation closure
-closure    orpa Optimized Random Phase Approximation
-                (not stable yet)
+closure    expc Optimized Random Phase Approximation
+                Exponential closure
 
 NO DEFAULT VALUE
 
@@ -39,7 +39,7 @@ Do not use with a too high precision because inflexion points may happen en in g
 Only works when calculating the discontinuous transition and using dich or rest options
 
 DEFAULT VALUE .false.
-DEFAULT VALUE 1.0d-10
+DEFAULT VALUE 1.0d-9
 
 ****************************************
 ***Varying parameter in the dichotomy***

@@ -37,7 +37,7 @@ var_incr=1.05
 mix_param=0.95
 cr_init='pyev'
 fq_init='unit'
-fcutoff=1.0d-10
+fcutoff=1.0d-9
 
 
 open (11,file='input.doz')

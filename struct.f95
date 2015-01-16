@@ -43,6 +43,7 @@ double precision,dimension(0:2**p2)::r
 double precision,dimension(0:2**p2)::q
 double precision,parameter::dr=0.01d0
 double precision,parameter::dq=pi/((2.0d0**p2)*dr)
+double precision::rmax=dr*(2**p2)
 
 double precision,dimension(0:2**p2)::cr !Direct interaction
 double precision,dimension(0:2**p2)::cr2 !Array used to stock the value of cr(r)
@@ -72,15 +73,11 @@ double precision,dimension(0:2**p2)::sdq
 double precision,dimension(0:2**p2)::hrref
 double precision,dimension(0:2**p2)::hdrref
 double precision,dimension(0:2**p2)::crref
-double precision,dimension(0:2**p2)::cdrref
+double precision,dimension(0:2**p2)::crref2
 double precision,dimension(0:2**p2)::ccrref
 double precision,dimension(0:2**p2)::cqref
-double precision,dimension(0:2**p2)::cdqref
 double precision,dimension(0:2**p2)::gamqref
-double precision,dimension(0:2**p2)::gamdqref
 double precision,dimension(0:2**p2)::gamrref
-double precision,dimension(0:2**p2)::gamdrref
-double precision,dimension(0:2**p2)::krenorm !the renormalized potential
 
 
 double precision,dimension(0:2**p2)::conv1 !Array that contains the discrete convergence
@@ -106,9 +103,6 @@ character(len=7)::sdqfile='sdq.dat'
 !==================================================
 io=0
 nbiter=0
-eta=0.0d0
-lamb1=0.0d0
-lamb2=0.0d0
 convergence=1.0d0
 fileex=.false.
 
@@ -137,21 +131,16 @@ do i=0,2**p2
   scq(i)=0.0d0
   sdq(i)=0.0d0
   hrref(i)=0.0d0
-  hdrref(i)=0.0d0
   crref(i)=0.0d0
-  cdrref(i)=0.0d0
+  crref2(i)=0.0d0
   ccrref(i)=0.0d0
   cqref(i)=0.0d0
-  cdqref(i)=0.0d0
   gamqref(i)=0.0d0
-  gamdqref(i)=0.0d0
   gamrref(i)=0.0d0
-  gamdrref(i)=0.0d0
-  krenorm(i)=0.0d0 
   conv1(i)=0.0d0
 end do
 
-eta=density*(4.0d0/3.0d0)*pi
+eta=density*(pi/6.0d0)
 lamb1=((1.0d0+2.0d0*eta)**2)/((1.0d0-eta)**4)
 lamb2=(-(1.0d0+0.5d0*eta)**2)/((1.0d0-eta)**4)
 
@@ -178,7 +167,7 @@ if (cr_init .eq. 'file') then
     do i=0,disc-1 !cr
       cr(i)=-lamb1-6.0d0*eta*lamb2*r(i)-0.5d0*eta*lamb1*r(i)**3 !py
     end do
-    cr(disc)=(-lamb1-6.0d0*eta*lamb2*r(disc-1)-0.5d0*eta*lamb1*r(disc-1)**3)/2.0d0 !py
+    cr(disc)=(-lamb1-6.0d0*eta*lamb2*r(disc)-0.5d0*eta*lamb1*r(disc)**3)/2.0d0 !py
     do i=disc+1,2**p2
       cr(i)=0.0d0 !py
     end do
@@ -188,7 +177,7 @@ else if (cr_init .eq. 'pyev') then
   do i=0,disc-1 !cr
     cr(i)=-lamb1-6.0d0*eta*lamb2*r(i)-0.5d0*eta*lamb1*r(i)**3 !py
   end do
-  cr(disc)=(-lamb1-6.0d0*eta*lamb2*r(disc-1)-0.5d0*eta*lamb1*r(disc-1)**3)/2.0d0 !py
+  cr(disc)=(-lamb1-6.0d0*eta*lamb2*r(disc)-0.5d0*eta*lamb1*r(disc)**3)/2.0d0 !py
   do i=disc+1,2**p2
     cr(i)=0.0d0 !py
   end do
@@ -197,7 +186,7 @@ else if (cr_init .eq. 'hncc') then
   do i=0,disc-1 !cr
     cr(i)=-1.0d0 !hnc
   end do
-  cr(disc)=(exp(k(disc+1))-2.0d0)/2.0d0 !hnc
+  cr(disc)=(exp(k(disc))-2.0d0)/2.0d0 !hnc
   do i=disc+1,2**p2
     cr(i)=exp(k(i))-1.0d0 !hnc
   end do
@@ -248,8 +237,8 @@ do while (convergence .gt. prec)
     cdq(0)=cdq(0)+4.0d0*pi*(r(i)**2)*cdr(i)*dr
   end do
 
-  call fft3s(0.0,cr(0),p2,r(2**p2),cq(0),1,0)
-  call fft3s(0.0,cdr(0),p2,r(2**p2),cdq(0),1,0)
+  call fft3s(0.0,cr(0),p2,rmax,cq(0),1,0)
+  call fft3s(0.0,cdr(0),p2,rmax,cdq(0),1,0)
 
 
 !Calculating the gamq and gamdq arrays
@@ -272,8 +261,8 @@ do while (convergence .gt. prec)
   end do
 
 
-  call fft3s(0.0,gamq(0),p2,r(2**p2),gamr(0),-1,0)
-  call fft3s(0.0,gamdq(0),p2,r(2**p2),gamdr(0),-1,0)
+  call fft3s(0.0,gamq(0),p2,rmax,gamr(0),-1,0)
+  call fft3s(0.0,gamdq(0),p2,rmax,gamdr(0),-1,0)
 
 !Calculating the cr2 and the cdr2 arrays
 !==================================================
@@ -285,7 +274,6 @@ do while (convergence .gt. prec)
       cdr2(i)=dexp(k(i)+gamdr(i))-1.0d0-gamdr(i)
     end do    
     cr2(disc)=0.5d0*dexp(gamr(disc))-1.0d0-gamdr(disc)
-!    cr2(disc)=(dexp(k(disc+1)+gamr(disc+1))-2.0d0-gamr(disc-1)-gamdr(disc+1))/2.0d0
     cdr2(disc)=dexp(k(disc)+gamdr(disc))-1.0d0-gamdr(disc)
     do i=disc+1,2**p2
       cr2(i)=dexp(k(i)+gamr(i))-1.0d0-gamr(i)
@@ -298,7 +286,6 @@ do while (convergence .gt. prec)
       cr2(i)=-1.0d0-gamr(i)
       cdr2(i)=k(i)
     end do    
-!    cr2(disc)=(k(disc+1)-1.0d0-gamr(disc-1))/2.0d0
     cr2(disc)=(k(disc)-1.0d0-gamr(disc))/2.0d0
     cdr2(disc)=k(disc)
     do i=disc+1,2**p2
@@ -337,83 +324,21 @@ do while (convergence .gt. prec)
 
   end do
 
-!Calculate hr and hdr
+!Calculate hr and hdr, and some other stuff
 !==================================================
-
-  if (closure .eq. 'hncc') then
-
-    do i=0,2**p2
-      hr(i)=gamr(i)+cr(i) !hr
-      hdr(i)=gamdr(i)+cdr(i) !hdr
-      hq(i)=gamq(i)+cq(i) !hq
-      hdq(i)=gamdq(i)+cdq(i) !hdq
-      hcq(i)=hq(i)-hdq(i) !hcq
-      ccq(i)=cq(i)-cdq(i) !ccq
-      scq(i)=1.0d0+density*hcq(i)
-      sdq(i)=density*hdq(i)
-    end do
-
-  else if ((closure .eq. 'msac') .or. (closure .eq. 'expc')) then
-
-    do i=0,disc-1
-      hr(i)=-1.0d0
-    end do
-!    hr(disc)=(gamr(disc+1)+cr(disc+1)-1.0d0)/2.0d0
-    hr(disc)=(gamr(disc)+cr(disc)-1.0d0)/2.0d0
-    do i=disc+1,2**p2
-      hr(i)=gamr(i)+cr(i) !hr
-    end do
- 
-    do i=0,2**p2
-      hdr(i)=gamdr(i)+cdr(i) !hdr
-      hq(i)=gamq(i)+cq(i) !hq
-      hdq(i)=gamdq(i)+cdq(i) !hdq
-      hcq(i)=hq(i)-hdq(i) !hcq
-      ccq(i)=cq(i)-cdq(i) !ccq
-      scq(i)=1.0d0+density*hcq(i)
-      sdq(i)=density*hdq(i)
-    end do
-
-  end if
+  do i=0,2**p2
+    hr(i)=gamr(i)+cr(i) !hr
+    hdr(i)=gamdr(i)+cdr(i) !hdr
+    hq(i)=gamq(i)+cq(i) !hq
+    hdq(i)=gamdq(i)+cdq(i) !hdq
+    hcq(i)=hq(i)-hdq(i) !hcq
+    ccq(i)=cq(i)-cdq(i) !ccq
+    scq(i)=1.0d0+density*hcq(i)
+    sdq(i)=density*hdq(i)
+  end do
 
 
 end do
-
-!If the density is zero, take the analytical solution of hdr
-!==================================================
-if (density .eq. 0.0d0) then
-
-  if (closure .eq. 'hncc') then
-
-    do i=0,2**p2
-      hdr(i)=exp(k(i))-1.0d0
-    end do
-
-  else if ((closure .eq. 'msac') .or. (closure .eq. 'expc')) then
-
-    do i=0,disc-1
-      hdr(i)=k(i)
-      hr(i)=-1.0d0
-    end do
-      hdr(disc)=k(disc)
-      hr(disc)=(k(disc+1)-1.0d0)/2.0d0
-    do i=disc+1,2**p2
-      hdr(i)=k(i)
-      hr(i)=k(i)
-    end do
-
-  end if
-
-  call fft3s(0.0,hdr(0),p2,r(2**p2),hdq(0),1,0)
-  call fft3s(0.0,hr(0),p2,r(2**p2),hq(0),1,0)
-
-end if
-
-
-
-
-
-
 
 
 
@@ -421,76 +346,78 @@ end if
 !==================================================
 if (closure .eq. 'expc') then
 
-  do i=0,disc-1 !cr
-    crref(i)=-lamb1-6.0d0*eta*lamb2*r(i)-0.5d0*eta*lamb1*r(i)**3 !py
-  end do
-  crref(disc)=(-lamb1-6.0d0*eta*lamb2*r(disc-1)-0.5d0*eta*lamb1*r(disc-1)**3)/2.0d0 !py
-  do i=disc+1,2**p2
-    crref(i)=0.0d0 !py
+  do while (convergence .gt. prec)
+
+    do i=0,disc-1 !cr
+      crref(i)=-lamb1-6.0d0*eta*lamb2*r(i)-0.5d0*eta*lamb1*r(i)**3 !py
+    end do
+    crref(disc)=(-lamb1-6.0d0*eta*lamb2*r(disc)-0.5d0*eta*lamb1*r(disc)**3)/2.0d0 !py
+    do i=disc+1,2**p2
+      crref(i)=0.0d0 !py
+    end do
+ 
+    do i=0,2**p2
+      cqref(0)=cqref(0)+4.0d0*pi*(r(i)**2)*crref(i)*dr
+    end do
+ 
+    call fft3s(0.0,crref(0),p2,rmax,cqref(0),1,0)
+ 
+    do i=0,2**p2
+      gamqref(i)=cqref(i)/(1.0d0-density*cqref(i))-cqref(i)
+    end do
+ 
+    do i=0,2**p2
+      gamrref(0)=gamrref(0)+(1.0d0/(2.0d0*pi**2))*(q(i)**2)*gamqref(i)*dq
+    end do
+ 
+    call fft3s(0.0,gamqref(0),p2,rmax,gamrref(0),-1,0)
+ 
+    do i=0,2**p2
+      hrref(i)=gamrref(i)+crref(i) !hrref
+    end do
+
+    !Take 100*mix_param% of the old and mix_param it with 100*(1-mix_param)%
+    !of the new and put it in the cr2 -the stock-
+    !==================================================
+    do i=0,2**p2 !cr
+      crref2(i)=mix_param*cr(i)+(1.0d0-mix_param)*crref2(i)
+    end do
+
+    !Calculate the convergence
+    !==================================================
+    convergence=0.0d0
+    do i=0,2**p2
+      convergence=convergence+dabs(crref(i)-crref2(i))
+    end do
+
+    !Passing the values
+    !==================================================
+    do i=0,2**p2
+      crref(i)=crref2(i)
+    end do
+
+
   end do
 
+  call fileman('hrref.dat',9,11,1)
+  call fileman('hdrref.dat',10,12,1)
   do i=0,2**p2
-    cqref(0)=cqref(0)+4.0d0*pi*(r(i)**2)*crref(i)*dr
-    cdqref(0)=cdqref(0)+4.0d0*pi*(r(i)**2)*cdrref(i)*dr
+    write(11,*) r(i),hrref(i)
+    write(12,*) r(i),hdrref(i)
   end do
-
-  call fft3s(0.0,crref(0),p2,r(2**p2),cqref(0),1,0)
-  call fft3s(0.0,cdrref(0),p2,r(2**p2),cdqref(0),1,0)
-
-  do i=0,2**p2
-    gamqref(i)=(cqref(i)-cdqref(i))/(1.0d0-density*(cqref(i)-cdqref(i)))&
-    +cdqref(i)/((1.0d0-density*(cqref(i)-cdqref(i)))**2)-cqref(i)
-    gamdqref(i)=cdqref(i)/((1.0d0-density*(cqref(i)-cdqref(i)))**2)-cdqref(i)
-  end do
-
-  do i=0,2**p2
-    gamrref(0)=gamrref(0)+(1.0d0/(2.0d0*pi**2))*(q(i)**2)*gamqref(i)*dq
-    gamdrref(0)=gamdrref(0)+(1.0d0/(2.0d0*pi**2))*(q(i)**2)*gamdqref(i)*dq
-  end do
-
-  call fft3s(0.0,gamqref(0),p2,r(2**p2),gamrref(0),-1,0)
-  call fft3s(0.0,gamdqref(0),p2,r(2**p2),gamdrref(0),-1,0)
-
-  do i=0,disc-1
-    hrref(i)=-1.0d0
-    hdrref(i)=gamdrref(i)+cdrref(i)
-    krenorm(i)=hr(i)-hrref(i) !calculation of the renomalized potential
-  end do
-  hrref(disc)=(gamrref(disc)+crref(disc)-1.0d0)/2.0d0
-!  hrref(disc)=(gamrref(disc+1)+crref(disc+1)-1.0d0)/2.0d0
-  hdrref(disc)=gamdrref(disc)+cdrref(disc)
-  krenorm(disc)=hr(disc)-hrref(disc) !calculation of the renomalized potential
-  do i=disc+1,2**p2
-    hrref(i)=gamrref(i)+crref(i) !hr
-    hdrref(i)=gamdrref(i)+cdrref(i) !hdr
-    krenorm(i)=hr(i)-hrref(i) !calculation of the renomalized potential
-  end do
-
-call fileman('hrref.dat',9,11,1)
-call fileman('hdrref.dat',10,12,1)
-call fileman('krenorm.dat',11,13,1)
-do i=0,2**p2
-  write(11,*) r(i),hrref(i)
-  write(12,*) r(i),hdrref(i)
-  write(13,*) r(i),krenorm(i)
-end do
-call fileman('hrref.dat',9,11,0)
-call fileman('hdrref.dat',10,12,0)
-call fileman('krenorm.dat',11,13,0)
+  call fileman('hrref.dat',9,11,0)
+  call fileman('hdrref.dat',10,12,0)
 
   do i=0,disc-1
     hdr(i)=dexp(hdr(i))-1.0d0 !for the disconnected part, the renormalized potential is equal to hdr(i)
-    hr(i)=(hrref(i)+1.0d0)*dexp(krenorm(i))-1.0d0
+    hr(i)=-1.0d0
   end do
   hdr(disc)=dexp(hdr(disc))-1.0d0
   hr(disc)=0.5d0*(2.0d0*hrref(disc)+1.0d0)*dexp(2.0d0*(hr(disc)-hrref(disc)))-1.0d0 !the limit coming from the right of the value at the discontinuity
   do i=disc+1,2**p2
     hdr(i)=dexp(hdr(i))-1.0d0
-    hr(i)=(hrref(i)+1.0d0)*dexp(krenorm(i))-1.0d0
+    hr(i)=(hrref(i)+1.0d0)*dexp(hr(i)-hrref(i))-1.0d0
   end do
-
-  hq(0)=0.0d0
-  hdq(0)=0.0d0
 
   do i=0,2**p2
    hq(i)=0.0d0
@@ -502,8 +429,8 @@ call fileman('krenorm.dat',11,13,0)
     hdq(0)=hdq(0)+4.0d0*pi*(r(i)**2)*hdr(i)*dr
   end do
 
-  call fft3s(0.0,hr(0),p2,r(2**p2),hq(0),1,0)
-  call fft3s(0.0,hdr(0),p2,r(2**p2),hdq(0),1,0)
+  call fft3s(0.0,hr(0),p2,rmax,hq(0),1,0)
+  call fft3s(0.0,hdr(0),p2,rmax,hdq(0),1,0)
 
   do i=0,2**p2
     hcq(i)=hq(i)-hdq(i)
