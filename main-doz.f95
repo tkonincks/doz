@@ -692,8 +692,13 @@ call date_and_time(DATE=d,TIME=t)
 write (6,'(a21,a8,a,a10)') "CALCULATION ENDED ON ",d," ",t
 
 call fileman('final_res',9,11,1)
-  if (var_param .eq. 'delt')  write (11,'(f22.16,f22.16,f22.16,f22.16)') density,density,delt_liq,delt_glas,lambda,eigenvalue
-  if (var_param .eq. 'dens')  write (11,'(f22.16,f22.16,f22.16,f22.16)') dens_liq,dens_glas,delta,delta,lambda,eigenvalue
+  if (var_param .eq. 'delt')  then
+    write (11,'(f22.16,f22.16,f22.16,f22.16)') density,density,delt_liq,delt_glas,lambda,eigenvalue
+  else if (var_param .eq. 'dens')  then
+    write (11,'(f22.16,f22.16,f22.16,f22.16)') dens_liq,dens_glas,delta,delta,lambda,eigenvalue
+  else 
+    write (11,'(f22.16,f22.16,f22.16,f22.16)') density,density,delta,delta,lambda,eigenvalue
+  end if
 call fileman('final_res',9,11,0)
 
 
