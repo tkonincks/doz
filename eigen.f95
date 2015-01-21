@@ -151,28 +151,50 @@ end do
 factv2=density*(h**3)/(32.0d0*(pi**2))
 factv1=(h**3)/(16.0d0*(pi**2))
 
-do ip=0,a_size
-  pr=dble(ip)+0.5d0
-  do ik=0,a_size
-    kr=dble(ik)+0.5d0
-    do iq=0,a_size
-      qr=dble(iq)+0.5d0
+if (trans_mode .eq. 'loca') then
 
-      if ((pr .ge. (dabs(qr-kr)+0.5d0)) .and. (pr .le. (qr+kr-0.5d0))) then
+  do ip=0,a_size
+    pr=dble(ip)+0.5d0
+    do ik=0,a_size
+      kr=dble(ik)+0.5d0
+      do iq=0,a_size
+        qr=dble(iq)+0.5d0
+  
+        if ((pr .ge. (dabs(qr-kr)+0.5d0)) .and. (pr .le. (qr+kr-0.5d0))) then
+ 
+          v1(iq,ik,ip)=factv1*hdq(ip)*(kr*pr/(qr**5))*((pr**2)+(qr**2)-(kr**2))**2
 
-        v2(iq,ik,ip)=factv2*scq(iq)*scq(ik)*scq(ip)*&
-        (kr*pr/(qr**5))*(((kr**2)+(qr**2)-(pr**2))*ccq(ik)+((pr**2)+(qr**2)-(kr**2))*ccq(ip))**2
+        end if
 
-        v1(iq,ik,ip)=factv1*scq(iq)*scq(ik)*hdq(ip)*&
-        (kr*pr/(qr**5))*(((kr**2)+(qr**2)-(pr**2))*ccq(ik)*density+((pr**2)+(qr**2)-(kr**2)))**2
-
-      end if
-
+      end do
     end do
   end do
-end do
 
 
+else
+
+  do ip=0,a_size
+    pr=dble(ip)+0.5d0
+    do ik=0,a_size
+      kr=dble(ik)+0.5d0
+      do iq=0,a_size
+        qr=dble(iq)+0.5d0
+  
+        if ((pr .ge. (dabs(qr-kr)+0.5d0)) .and. (pr .le. (qr+kr-0.5d0))) then
+  
+          v2(iq,ik,ip)=factv2*scq(iq)*scq(ik)*scq(ip)*&
+          (kr*pr/(qr**5))*(((kr**2)+(qr**2)-(pr**2))*ccq(ik)+((pr**2)+(qr**2)-(kr**2))*ccq(ip))**2
+  
+          v1(iq,ik,ip)=factv1*scq(iq)*scq(ik)*hdq(ip)*&
+          (kr*pr/(qr**5))*(((kr**2)+(qr**2)-(pr**2))*ccq(ik)*density+((pr**2)+(qr**2)-(kr**2)))**2
+  
+        end if
+  
+      end do
+    end do
+  end do
+
+end if
 
 
 
