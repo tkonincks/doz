@@ -583,7 +583,23 @@ else if (calc_mode .eq. 'dich') then
   end if
 
 
-
+  if (var_param .eq. 'delt') then
+    dens_liq=density
+    dens_glas=density
+  else if (var_param .eq. 'dens') then
+    delt_liq=delta
+    delt_glas=delta
+  else
+    dens_liq=density
+    dens_glas=density
+    delt_liq=delta
+    delt_glas=delta
+  end if
+  
+  if (trans_mode .eq. 'disc') then
+    eigenvalue=eigenvalue_inflex
+    lambda=lambda_inflex
+  end if
 
 
 else if ((trans_mode .eq. 'cont') .and. (calc_mode .eq. 'dich') .and. (var_param .eq. 'lamb')) then
@@ -692,8 +708,7 @@ call date_and_time(DATE=d,TIME=t)
 write (6,'(a21,a8,a,a10)') "CALCULATION ENDED ON ",d," ",t
 
 call fileman('final_res',9,11,1)
-  if (var_param .eq. 'delt')  write (11,'(f22.16,f22.16,f22.16,f22.16)') density,density,delt_liq,delt_glas,lambda,eigenvalue
-  if (var_param .eq. 'dens')  write (11,'(f22.16,f22.16,f22.16,f22.16)') dens_liq,dens_glas,delta,delta,lambda,eigenvalue
+  write (11,'(f22.16,f22.16,f22.16,f22.16)') dens_liq,dens_glas,delt_liq,delt_glas,lambda,eigenvalue
 call fileman('final_res',9,11,0)
 
 
