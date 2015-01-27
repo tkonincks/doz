@@ -293,7 +293,7 @@ goto 1
 
 
 
-else if (calc_mode .eq. 'dich') then
+else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
 
   write (6,*) ""
   write (6,800) "                  FIRST RESULTS                      "
@@ -596,10 +596,7 @@ else if (calc_mode .eq. 'dich') then
     delt_glas=delta
   end if
   
-  if (trans_mode .eq. 'disc') then
-    eigenvalue=eigenvalue_inflex
-    lambda=lambda_inflex
-  end if
+  if (trans_mode .eq. 'disc') lambda=lambda_inflex
 
 
 else if ((trans_mode .eq. 'cont') .and. (calc_mode .eq. 'dich') .and. (var_param .eq. 'lamb')) then
