@@ -278,7 +278,10 @@ if (calc_mode .eq. 'sing') then
     write (6,901) "conv_fq    = ",fq(witb(fq,a_size))
   end if
 
-
+  dens_liq=density
+  dens_glas=density
+  delt_liq=delta
+  delt_glas=delta
 
 
 

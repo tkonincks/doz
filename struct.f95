@@ -196,7 +196,7 @@ else if (cr_init .eq. 'zero') then
 end if
 
 if (cr_init .eq. 'file') then
-  inquire(file='cr.dat',exist=fileex)
+  inquire(file='cdr.dat',exist=fileex)
   if (fileex .eqv. .true.) then
     call fileman(cdrfile,len(cdrfile),11,1)
     do i=0,2**p2
@@ -367,7 +367,6 @@ if (closure .eq. 'expc') then
 !    write (6,*) "convergence expc",convergence
 
     cqref(0)=0.0d0
-
     do i=0,2**p2
       cqref(0)=cqref(0)+4.0d0*pi*(r(i)**2)*crref(i)*dr
     end do
@@ -379,15 +378,18 @@ if (closure .eq. 'expc') then
     end do
 
     gamrref(0)=0.0d0
- 
     do i=0,2**p2
       gamrref(0)=gamrref(0)+(1.0d0/(2.0d0*pi**2))*(q(i)**2)*gamqref(i)*dq
     end do
  
     call fft3s(0.0,gamqref(0),p2,rmax,gamrref(0),-1,0)
- 
-    do i=0,2**p2
-      hrref(i)=gamrref(i)+crref(i) !hrref
+
+    do i=0,disc-1
+      crref2(i)=-1.0d0-gamrref(i)
+    end do    
+    crref2(disc)=(-1.0d0-gamrref(disc))/2.0d0
+    do i=disc+1,2**p2
+      crref2(i)=0.0d0
     end do
 
     !Take 100*mix_param% of the old and mix_param it with 100*(1-mix_param)%
@@ -427,15 +429,14 @@ if (closure .eq. 'expc') then
     hr(i)=-1.0d0
   end do
   hdr(disc)=dexp(hdr(disc))-1.0d0
-  hr(disc)=0.5d0*(2.0d0*hrref(disc)+1.0d0)*dexp(2.0d0*(hr(disc)-hrref(disc)))-1.0d0 !the limit coming from the right of the value at the discontinuity
+  hr(disc)=(hrref(disc)+1.0d0)*dexp(2.0d0*(hr(disc)-hrref(disc)))-1.0d0 !the limit coming from the right of the value at the discontinuity
   do i=disc+1,2**p2
     hdr(i)=dexp(hdr(i))-1.0d0
     hr(i)=(hrref(i)+1.0d0)*dexp(hr(i)-hrref(i))-1.0d0
   end do
 
-   hq(0)=0.0d0
-   hdq(0)=0.0d0
-
+  hq(0)=0.0d0
+  hdq(0)=0.0d0
   do i=0,2**p2
     hq(0)=hq(0)+4.0d0*pi*(r(i)**2)*hr(i)*dr
     hdq(0)=hdq(0)+4.0d0*pi*(r(i)**2)*hdr(i)*dr
@@ -446,16 +447,26 @@ if (closure .eq. 'expc') then
 
   do i=0,2**p2
     hcq(i)=hq(i)-hdq(i)
-    cq(i)=hq(i)/(1.0d0+density*hq(i))
+    cq(i)=hq(i)/(1.0d0+density*hq(i))!!!!!!!!!!!!!!!!!!!!!!!!
     ccq(i)=hcq(i)/(1.0d0+density*hcq(i))
     cdq(i)=cq(i)-ccq(i)
     scq(i)=1.0d0+density*hcq(i)
     sdq(i)=density*hdq(i)
   end do
 
+  cr(0)=0.0d0
   do i=0,2**p2
     cr(0)=cr(0)+(1.0d0/(2.0d0*pi**2))*(q(i)**2)*cq(i)*dq
   end do
+
+  call fileman(crfile,len(crfile),16,1)
+  call fileman(cdrfile,len(cdrfile),17,1)
+  do i=0,2**p2
+    write(16,*) r(i),cr(i)
+    write(17,*) r(i),cdr(i)
+  end do
+  call fileman(crfile,len(crfile),16,0)
+  call fileman(cdrfile,len(cdrfile),17,0)
 
   call fft3s(0.0,cq(0),p2,rmax,cr(0),-1,0)
   call fft3s(0.0,cdq(0),p2,rmax,cdr(0),-1,0)
@@ -469,8 +480,13 @@ call fileman(hdrfile,len(hdrfile),12,1)
 call fileman(hcqfile,len(hcqfile),13,1)
 call fileman(hdqfile,len(hdqfile),14,1)
 call fileman(ccqfile,len(ccqfile),15,1)
-call fileman(crfile,len(crfile),16,1)
-call fileman(cdrfile,len(cdrfile),17,1)
+if (closure .eq. 'expc') then
+  call fileman('cr_expc.dat',11,16,1)
+  call fileman('cdr_expc.dat',12,17,1)
+else
+  call fileman(crfile,len(crfile),16,1)
+  call fileman(cdrfile,len(cdrfile),17,1)
+end if
 call fileman(scqfile,len(scqfile),18,1)
 call fileman(sdqfile,len(sdqfile),19,1)
 
@@ -491,8 +507,13 @@ call fileman(hdrfile,len(hdrfile),12,0)
 call fileman(hcqfile,len(hcqfile),13,0)
 call fileman(hdqfile,len(hdqfile),14,0)
 call fileman(ccqfile,len(ccqfile),15,0)
-call fileman(crfile,len(crfile),16,0)
-call fileman(cdrfile,len(cdrfile),17,0)
+if (closure .eq. 'expc') then
+  call fileman('cr_expc.dat',11,16,0)
+  call fileman('cdr_expc.dat',12,17,0)
+else
+  call fileman(crfile,len(crfile),16,0)
+  call fileman(cdrfile,len(cdrfile),17,0)
+end if
 call fileman(scqfile,len(scqfile),18,0)
 call fileman(sdqfile,len(sdqfile),19,0)
 
