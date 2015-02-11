@@ -37,6 +37,19 @@ double precision::eta
 double precision::lamb1
 double precision::lamb2
 
+!For the Waisman parametrization
+!==================================================
+double precision::xred=0.0d0
+double precision::fw=0.0d0
+double precision::qw=0.0d0
+double precision::v0=0.0d0
+double precision::z1=0.0d0
+double precision::sigma1=0.0d0
+double precision::tau1=0.0d0
+double precision::alpha1=0.0d0
+double precision::v1v0=0.0d0
+double precision::k1=0.0d0
+
 !Arrays
 !==================================================
 double precision,dimension(0:2**p2)::r
@@ -221,6 +234,22 @@ else if ((cr_init .eq. 'pyev') .or. (cr_init .eq. 'zero')) then
 
 end if
 
+
+!Calculation of the Waisman parametrization for the ORPApproximation
+!==================================================
+if (closure .eq. 'orpa') then
+  xred=(density*(1.0d0-eta)**4)/(delta*(8.0d0*eta-2.0d0*eta**2))
+  fw=(1.0d0-eta)*dsqrt(1.0d0/xred)
+  qw=(1+2.0d0*eta)**2/(1.0d0-eta)**2
+  v0=(6.0d0/4.0d0)*(xred-1.0d0)-fw**2+1.0d0
+  z1=(2.0d0/(qw-fw**2))*((v0+fw**2-qw)*fw+dsqrt((v0+fw**2-qw)*v0*qw))
+  sigma1=(1.0d0/(2.0d0*z1))*((z1-2.0d0)/(z1+2.0d0)+dexp(-z1))
+  tau1=(1.0d0/(2.0d0*z1))*((z1**2+2.0d0*z1-4.0d0)/(4.0d0+2.0d0*z1-z1**2)+dexp(-z1))
+  alpha1=((4.0d0*2.0d0*z1-z1**2)*tau1)/(2.0d0*(2.0d0+z1)*sigma1)
+  v1v0=2.0d0-dsqrt(qw)-(1.0d0/(2.0d0*v0*dsqrt(qw)))*((v0+fw**2-qw)*(v0+fw**2)+0.25d0*(z1**2)*(qw-fw**2))
+  k1=((2.0d0*((z1+2.0d0)**2)*(sigma1**2)*v0)/(3.0d0*eta*(z1**2)))*(v1v0-alpha1)**2
+end if
+
 !Iterate!!!!
 !==================================================
 nbiter=0
@@ -295,6 +324,30 @@ do while (convergence .gt. prec)
     cdr2(disc)=k(disc)
     do i=disc+1,2**p2
       cr2(i)=k(i)
+      cdr2(i)=k(i)
+    end do
+
+  else if (closure .eq. 'pyev') then
+    do i=0,disc-1
+      cr2(i)=-1.0d0-gamr(i)
+      cdr2(i)=k(i)
+    end do    
+    cr2(disc)=(-1.0d0-gamr(disc))/2.0d0
+    cdr2(disc)=k(disc)
+    do i=disc+1,2**p2
+      cr2(i)=0.0d0
+      cdr2(i)=k(i)
+    end do
+
+  else if ((closure .eq. 'orpa') .or. (closure .eq. 'oexp')) then
+    do i=0,disc-1
+      cr2(i)=-1.0d0-gamr(i)
+      cdr2(i)=k(i)
+    end do
+    cr2(disc)=(k(disc)-1.0d0-gamr(disc)+k1*(dexp(-z1*(r(disc)-1.0d0))/r(disc)))/2.0d0
+    cdr2(disc)=k(disc)
+    do i=disc+1,2**p2
+      cr2(i)=k(i)+k1*(dexp(-z1*(r(i)-1.0d0))/r(i))
       cdr2(i)=k(i)
     end do
 
