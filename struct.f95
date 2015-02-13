@@ -39,6 +39,7 @@ double precision::lamb2
 
 !For the Waisman parametrization
 !==================================================
+double precision::cs=0.0d0
 double precision::xred=0.0d0
 double precision::fw=0.0d0
 double precision::qw=0.0d0
@@ -238,16 +239,29 @@ end if
 !Calculation of the Waisman parametrization for the ORPApproximation
 !==================================================
 if (closure .eq. 'orpa') then
-  xred=(density*(1.0d0-eta)**4)/(delta*(8.0d0*eta-2.0d0*eta**2))
+  xred=1.0d0/((8.0d0*eta-2.0d0*eta**2)/(1.0d0-eta)**4+1.0d0)
+  cs=(1+eta+eta**2-eta**3)/((1-eta)**3)
   fw=(1.0d0-eta)*dsqrt(1.0d0/xred)
-  qw=(1+2.0d0*eta)**2/(1.0d0-eta)**2
-  v0=(6.0d0/4.0d0)*(xred-1.0d0)-fw**2+1.0d0
+  qw=(1.0d0+2.0d0*eta)**2/(1.0d0-eta)**2
+  v0=(6.0d0/4.0d0)*(cs-1.0d0)-fw**2+1.0d0
   z1=(2.0d0/(qw-fw**2))*((v0+fw**2-qw)*fw+dsqrt((v0+fw**2-qw)*v0*qw))
   sigma1=(1.0d0/(2.0d0*z1))*((z1-2.0d0)/(z1+2.0d0)+dexp(-z1))
   tau1=(1.0d0/(2.0d0*z1))*((z1**2+2.0d0*z1-4.0d0)/(4.0d0+2.0d0*z1-z1**2)+dexp(-z1))
-  alpha1=((4.0d0*2.0d0*z1-z1**2)*tau1)/(2.0d0*(2.0d0+z1)*sigma1)
+  alpha1=((4.0d0+2.0d0*z1-z1**2)*tau1)/(2.0d0*(2.0d0+z1)*sigma1)
   v1v0=2.0d0-dsqrt(qw)-(1.0d0/(2.0d0*v0*dsqrt(qw)))*((v0+fw**2-qw)*(v0+fw**2)+0.25d0*(z1**2)*(qw-fw**2))
-  k1=((2.0d0*((z1+2.0d0)**2)*(sigma1**2)*v0)/(3.0d0*eta*(z1**2)))*(v1v0-alpha1)**2
+  k1=((2.0d0*((z1+2.0d0)**2)*(sigma1**2))/(3.0d0*eta*(z1**2)))*v0*(v1v0-alpha1)**2
+
+  write (6,*) "eta   ",eta  
+  write (6,*) "xred  ",xred  
+  write (6,*) "fw    ",fw    
+  write (6,*) "qw    ",qw    
+  write (6,*) "v0    ",v0    
+  write (6,*) "z1    ",z1    
+  write (6,*) "sigma1",sigma1
+  write (6,*) "tau1  ",tau1  
+  write (6,*) "alpha1",alpha1
+  write (6,*) "v1v0  ",v1v0  
+  write (6,*) "k1    ",k1    
 end if
 
 !Iterate!!!!
