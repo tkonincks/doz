@@ -238,7 +238,7 @@ end if
 
 !Calculation of the Waisman parametrization for the ORPApproximation
 !==================================================
-if (closure .eq. 'orpa') then
+if ((closure .eq. 'orpa') .or. (closure .eq. 'oexp')) then
   xred=1.0d0/((8.0d0*eta-2.0d0*eta**2)/(1.0d0-eta)**4+1.0d0)
   cs=(1+eta+eta**2-eta**3)/((1-eta)**3)
   fw=(1.0d0-eta)*dsqrt(1.0d0/xred)
@@ -251,17 +251,17 @@ if (closure .eq. 'orpa') then
   v1v0=2.0d0-dsqrt(qw)-(1.0d0/(2.0d0*v0*dsqrt(qw)))*((v0+fw**2-qw)*(v0+fw**2)+0.25d0*(z1**2)*(qw-fw**2))
   k1=((2.0d0*((z1+2.0d0)**2)*(sigma1**2))/(3.0d0*eta*(z1**2)))*v0*(v1v0-alpha1)**2
 
-  write (6,*) "eta   ",eta  
-  write (6,*) "xred  ",xred  
-  write (6,*) "fw    ",fw    
-  write (6,*) "qw    ",qw    
-  write (6,*) "v0    ",v0    
-  write (6,*) "z1    ",z1    
-  write (6,*) "sigma1",sigma1
-  write (6,*) "tau1  ",tau1  
-  write (6,*) "alpha1",alpha1
-  write (6,*) "v1v0  ",v1v0  
-  write (6,*) "k1    ",k1    
+!  write (6,*) "eta   ",eta  
+!  write (6,*) "xred  ",xred  
+!  write (6,*) "fw    ",fw    
+!  write (6,*) "qw    ",qw    
+!  write (6,*) "v0    ",v0    
+!  write (6,*) "z1    ",z1    
+!  write (6,*) "sigma1",sigma1
+!  write (6,*) "tau1  ",tau1  
+!  write (6,*) "alpha1",alpha1
+!  write (6,*) "v1v0  ",v1v0  
+!  write (6,*) "k1    ",k1    
 end if
 
 !Iterate!!!!
@@ -540,6 +540,140 @@ if (closure .eq. 'expc') then
 
 end if
 
+
+
+
+!Calculation of the reference system for EXPC
+!==================================================
+if (closure .eq. 'oexp') then
+
+  convergence=1.0d0
+
+  do i=0,disc-1 !cr
+    crref(i)=0.0d0
+  end do
+  crref(disc)=(k1*(dexp(-z1*(r(disc)-1.0d0))/r(disc)))/2.0d0
+  do i=disc+1,2**p2
+    crref(i)=k1*(dexp(-z1*(r(i)-1.0d0))/r(i))
+  end do
+ 
+
+  do while (convergence .gt. prec)
+
+!    write (6,*) "convergence expc",convergence
+
+    cqref(0)=0.0d0
+    do i=0,2**p2
+      cqref(0)=cqref(0)+4.0d0*pi*(r(i)**2)*crref(i)*dr
+    end do
+ 
+    call fft3s(0.0,crref(0),p2,rmax,cqref(0),1,0)
+ 
+    do i=0,2**p2
+      gamqref(i)=cqref(i)/(1.0d0-density*cqref(i))-cqref(i)
+    end do
+
+    gamrref(0)=0.0d0
+    do i=0,2**p2
+      gamrref(0)=gamrref(0)+(1.0d0/(2.0d0*pi**2))*(q(i)**2)*gamqref(i)*dq
+    end do
+ 
+    call fft3s(0.0,gamqref(0),p2,rmax,gamrref(0),-1,0)
+
+    do i=0,disc-1
+      crref2(i)=-1.0d0-gamrref(i)
+    end do    
+    crref2(disc)=(-1.0d0-gamrref(disc)+k1*(dexp(-z1*(r(disc)-1.0d0))/r(disc)))/2.0d0
+    do i=disc+1,2**p2
+      crref2(i)=k1*(dexp(-z1*(r(i)-1.0d0))/r(i))
+    end do
+
+    !Take 100*mix_param% of the old and mix_param it with 100*(1-mix_param)%
+    !of the new and put it in the cr2 -the stock-
+    !==================================================
+    do i=0,2**p2 !cr
+      crref2(i)=mix_param*crref(i)+(1.0d0-mix_param)*crref2(i)
+    end do
+
+    !Calculate the convergence
+    !==================================================
+    convergence=0.0d0
+    do i=0,2**p2
+      convergence=convergence+dabs(crref(i)-crref2(i))
+    end do
+
+    !Passing the values
+    !==================================================
+    do i=0,2**p2
+      crref(i)=crref2(i)
+    end do
+
+  end do
+
+  do i=0,2**p2
+    hrref(i)=gamrref(i)+crref(i)
+  end do
+
+  call fileman('hrref.dat',9,11,1)
+  do i=0,2**p2
+    write(11,*) r(i),hrref(i)
+  end do
+  call fileman('hrref.dat',9,11,0)
+
+  do i=0,disc-1
+    hdr(i)=dexp(hdr(i))-1.0d0 !for the disconnected part, the renormalized potential is equal to hdr(i)
+    hr(i)=-1.0d0
+  end do
+  hdr(disc)=dexp(hdr(disc))-1.0d0
+  hr(disc)=(hrref(disc)+1.0d0)*dexp(2.0d0*(hr(disc)-hrref(disc)))-1.0d0 !the limit coming from the right of the value at the discontinuity
+  do i=disc+1,2**p2
+    hdr(i)=dexp(hdr(i))-1.0d0
+    hr(i)=(hrref(i)+1.0d0)*dexp(hr(i)-hrref(i))-1.0d0
+  end do
+
+  hq(0)=0.0d0
+  hdq(0)=0.0d0
+  do i=0,2**p2
+    hq(0)=hq(0)+4.0d0*pi*(r(i)**2)*hr(i)*dr
+    hdq(0)=hdq(0)+4.0d0*pi*(r(i)**2)*hdr(i)*dr
+  end do
+
+  call fft3s(0.0,hr(0),p2,rmax,hq(0),1,0)
+  call fft3s(0.0,hdr(0),p2,rmax,hdq(0),1,0)
+
+  do i=0,2**p2
+    hcq(i)=hq(i)-hdq(i)
+    cq(i)=hq(i)/(1.0d0+density*hq(i))!!!!!!!!!!!!!!!!!!!!!!!!
+    ccq(i)=hcq(i)/(1.0d0+density*hcq(i))
+    cdq(i)=cq(i)-ccq(i)
+    scq(i)=1.0d0+density*hcq(i)
+    sdq(i)=density*hdq(i)
+  end do
+
+  cr(0)=0.0d0
+  do i=0,2**p2
+    cr(0)=cr(0)+(1.0d0/(2.0d0*pi**2))*(q(i)**2)*cq(i)*dq
+  end do
+
+  call fileman(crfile,len(crfile),16,1)
+  call fileman(cdrfile,len(cdrfile),17,1)
+  do i=0,2**p2
+    write(16,*) r(i),cr(i)
+    write(17,*) r(i),cdr(i)
+  end do
+  call fileman(crfile,len(crfile),16,0)
+  call fileman(cdrfile,len(cdrfile),17,0)
+
+  call fft3s(0.0,cq(0),p2,rmax,cr(0),-1,0)
+  call fft3s(0.0,cdq(0),p2,rmax,cdr(0),-1,0)
+
+end if
+
+
+
+
+
+
 !Print the stuff
 !==================================================
 call fileman(hrfile,len(hrfile),11,1)
@@ -577,6 +711,9 @@ call fileman(ccqfile,len(ccqfile),15,0)
 if (closure .eq. 'expc') then
   call fileman('cr_expc.dat',11,16,0)
   call fileman('cdr_expc.dat',12,17,0)
+else if (closure .eq. 'oexp') then
+  call fileman('cr_oexp.dat',11,16,0)
+  call fileman('cdr_oexp.dat',12,17,0)
 else
   call fileman(crfile,len(crfile),16,0)
   call fileman(cdrfile,len(cdrfile),17,0)

@@ -14,8 +14,10 @@ NO DEFAULT VALUE
 **********************
 closure    hncc HyperNetted Chain closure
 closure    msac Mean Square Approximation closure
-closure    expc Optimized Random Phase Approximation
-                Exponential closure
+closure    expc MSA exponential closure
+closure    orpa Optimized Random Phaze Approximation
+closure    oexp ORPA exponential closure
+closure    pyev Percus-Yevick closure
 
 NO DEFAULT VALUE
 
