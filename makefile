@@ -1,61 +1,70 @@
 EXEC=doz.x
+#GC=gfortran-4.7
 GC=ifort
 
 ifeq ($(GC),ifort)
 
-GOPT=-xHost -ipo -Tf
+GOPT=-mtune=generic -O2 -xHost -ipo
 
-$(EXEC): main-doz.o read.o struct.o eigen.o fft.o fileman.o func.o 
-	$(GC) -o $(EXEC) main-doz.o read.o struct.o eigen.o fft.o fileman.o func.o
+# -msse4a
 
-main-doz.o: main-doz.f95
-	$(GC) -c $(GOPT) main-doz.f95 -free
+$(EXEC): main-doz.o read.o struct.o eigen.o lang.o fft.o fileman.o func.o 
+	$(GC) -o $(EXEC) main-doz.o read.o struct.o eigen.o lang.o fft.o fileman.o func.o
+
+main-doz.o: main-doz.f90
+	$(GC) -c $(GOPT) main-doz.f90
                 
-read.o: read.f95
-	$(GC) -c $(GOPT) read.f95 -free
+read.o: read.f90
+	$(GC) -c $(GOPT) read.f90
                 
-struct.o: struct.f95
-	$(GC) -c $(GOPT) struct.f95 -free
+struct.o: struct.f90
+	$(GC) -c $(GOPT) struct.f90
                 
-eigen.o: eigen.f95
-	$(GC) -c $(GOPT) eigen.f95 -free
+eigen.o: eigen.f90
+	$(GC) -c $(GOPT) eigen.f90
                 
+lang.o: lang.f90
+	$(GC) -c $(GOPT) lang.f90
+
 fft.o: fft.f    
-	$(GC) -c fft.f
+	$(GC) -c $(GOPT) fft.f
                 
-fileman.o: fileman.f95
-	$(GC) -c $(GOPT) fileman.f95 -free
+fileman.o: fileman.f90
+	$(GC) -c $(GOPT) fileman.f90
                 
-func.o: func.f95
-	$(GC) -c $(GOPT) func.f95 -free
+func.o: func.f90
+	$(GC) -c $(GOPT) func.f90
 
 else
 
-GOPT=-O2
+GOPT=-Wall -O2
 
-$(EXEC): main-doz.o read.o struct.o eigen.o fft.o fileman.o func.o 
-	$(GC) $(GOPT) -o $(EXEC) main-doz.o read.o struct.o eigen.o fft.o fileman.o func.o
+$(EXEC): main-doz.o read.o struct.o eigen.o lang.o fft.o fileman.o func.o 
+	$(GC) -o $(EXEC) main-doz.o read.o struct.o eigen.o lang.o fft.o fileman.o func.o
 
-main-doz.o: main-doz.f95
-	$(GC) $(GOPT) -c main-doz.f95
+main-doz.o: main-doz.f90
+	$(GC) $(GOPT) -c main-doz.f90
 
-read.o: read.f95
-	$(GC) $(GOPT) -c read.f95
+read.o: read.f90
+	$(GC) $(GOPT) -c read.f90
 
-struct.o: struct.f95
-	$(GC) $(GOPT) -c struct.f95
+struct.o: struct.f90
+	$(GC) $(GOPT) -c struct.f90
 
-eigen.o: eigen.f95
-	$(GC) $(GOPT) -c eigen.f95
+eigen.o: eigen.f90
+	$(GC) $(GOPT) -c eigen.f90
+                
+lang.o: lang.f90
+	$(GC) -c $(GOPT) lang.f90
 
 fft.o: fft.f
 	$(GC) $(GOPT) -c fft.f
 
-fileman.o: fileman.f95
-	$(GC) $(GOPT) -c fileman.f95
+fileman.o: fileman.f90
+	$(GC) $(GOPT) -c fileman.f90
 
-func.o: func.f95
-	$(GC) $(GOPT) -c func.f95
+func.o: func.f90
+	$(GC) $(GOPT) -c func.f90
 
 endif
 

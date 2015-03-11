@@ -1,8 +1,0 @@
-trans_mode disc
-calc_mode  dich
-closure    hncc
-var_param  dens
-var_prec   1.0d-4
-density    1.00
-delta      0.00
-sigma      0.25
