@@ -73,6 +73,14 @@ fq_init    file Read the array from an existing file present in the working dire
 
 DEFAULT VALUE unit
 
+*****************************************************
+***Resolution of the generalized langevin equation***
+*****************************************************
+langevin   true Resolves the generalized langevin equation with the same parameters after 
+                the calculation has been made.
+
+DEFAULT VALUE false
+
 ********************************
 ***Other important parameters***
 ********************************
