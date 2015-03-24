@@ -1,6 +1,6 @@
 subroutine read (trans_mode,closure,calc_mode,var_param,density,delta,sigma,&
 var_incr,var_prec,var_liq,var_glas,dens_lo,delt_li_lo,delt_gl_lo,dens_hi,&
-delt_li_hi,delt_gl_hi,fast,mix_param,cr_init,fq_init,fcutoff,langevin)
+delt_li_hi,delt_gl_hi,fast,mix_param,cr_init,fq_init,fcutoff,dynamics)
 
 implicit none
 
@@ -8,7 +8,7 @@ character(len=10)::varname
 character(len=4)::trans_mode,closure,calc_mode,var_param,cr_init,fq_init
 double precision::density,delta,sigma,var_incr,var_prec,var_liq,var_glas,&
 dens_lo,delt_li_lo,delt_gl_lo,dens_hi,delt_li_hi,delt_gl_hi,mix_param,fcutoff
-logical::fast,langevin
+logical::fast,dynamics
 
 integer::io=0
 
@@ -33,7 +33,7 @@ delt_gl_hi=0.0
 !Some default values
 !==================================================
 fast=.false.
-langevin=.false.
+dynamics=.false.
 var_incr=1.05
 mix_param=0.95
 cr_init='pyev'
@@ -92,8 +92,8 @@ do
       read (11,*,iostat=io) fq_init
     case ('fcutoff')
       read (11,*,iostat=io) fcutoff
-    case ('langevin')
-      read (11,*,iostat=io) langevin
+    case ('dynamics')
+      read (11,*,iostat=io) dynamics
   end select
 
   if (io .ne. 0) exit

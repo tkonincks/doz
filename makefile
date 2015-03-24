@@ -8,8 +8,8 @@ GOPT=-mtune=generic -O2 -xHost -ipo
 
 # -msse4a
 
-$(EXEC): main-doz.o read.o struct.o eigen.o lang.o fft.o fileman.o func.o 
-	$(GC) -o $(EXEC) main-doz.o read.o struct.o eigen.o lang.o fft.o fileman.o func.o
+$(EXEC): main-doz.o read.o struct.o eigen.o dyn.o fft.o fileman.o func.o 
+	$(GC) -o $(EXEC) main-doz.o read.o struct.o eigen.o dyn.o fft.o fileman.o func.o
 
 main-doz.o: main-doz.f90
 	$(GC) -c $(GOPT) main-doz.f90
@@ -23,8 +23,8 @@ struct.o: struct.f90
 eigen.o: eigen.f90
 	$(GC) -c $(GOPT) eigen.f90
                 
-lang.o: lang.f90
-	$(GC) -c $(GOPT) lang.f90
+dyn.o: dyn.f90
+	$(GC) -c $(GOPT) dyn.f90
 
 fft.o: fft.f    
 	$(GC) -c $(GOPT) fft.f
@@ -39,8 +39,8 @@ else
 
 GOPT=-Wall -O2
 
-$(EXEC): main-doz.o read.o struct.o eigen.o lang.o fft.o fileman.o func.o 
-	$(GC) -o $(EXEC) main-doz.o read.o struct.o eigen.o lang.o fft.o fileman.o func.o
+$(EXEC): main-doz.o read.o struct.o eigen.o dyn.o fft.o fileman.o func.o 
+	$(GC) -o $(EXEC) main-doz.o read.o struct.o eigen.o dyn.o fft.o fileman.o func.o
 
 main-doz.o: main-doz.f90
 	$(GC) $(GOPT) -c main-doz.f90
@@ -54,8 +54,8 @@ struct.o: struct.f90
 eigen.o: eigen.f90
 	$(GC) $(GOPT) -c eigen.f90
                 
-lang.o: lang.f90
-	$(GC) -c $(GOPT) lang.f90
+dyn.o: dyn.f90
+	$(GC) -c $(GOPT) dyn.f90
 
 fft.o: fft.f
 	$(GC) $(GOPT) -c fft.f

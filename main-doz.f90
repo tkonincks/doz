@@ -25,7 +25,7 @@ double precision::delt_gl_hi
 double precision::delt_hi
 double precision::lamb_hi
 
-logical::fast,var_fast,langevin
+logical::fast,var_fast,dynamics
 
 double precision::mix_param,fcutoff
 
@@ -130,7 +130,7 @@ prec_eigen=1.0d-4
 prec_fq=1.0d-6
 prec_lamb=1.0d-6
 
-langevin=.false.
+dynamics=.false.
 fast=.false.
 
 conv_glas=.false.
@@ -170,7 +170,7 @@ write (6,*) '     `"888*""      ''Y"      ''8    8888 '
 write (6,*) '        ""                  ''8    888F '
 write (6,*) '                             %k  <88F  '
 write (6,*) '                              "+:*%`   '
-write (6,*) '         VERSION 11032015         '
+write (6,*) '         VERSION 09022015         '
 write (6,*) ''
 write (6,'(a24,a8,a,a10)') "CALCULATION LAUNCHED ON ",d," ",t
                                    
@@ -186,7 +186,7 @@ write (6,'(a24,a8,a,a10)') "CALCULATION LAUNCHED ON ",d," ",t
 !Call the read subroutine to collect all the data
 call read (trans_mode,closure,calc_mode,var_param,density,delta,sigma,var_incr&
 ,var_prec,var_liq,var_glas,dens_lo,delt_li_lo,delt_gl_lo,dens_hi,delt_li_hi&
-,delt_gl_hi,fast,mix_param,cr_init,fq_init,fcutoff,langevin)
+,delt_gl_hi,fast,mix_param,cr_init,fq_init,fcutoff,dynamics)
 
 prec_eigen=var_prec
 var_fast=fast
@@ -713,16 +713,17 @@ call date_and_time(DATE=d,TIME=t)
 write (6,'(a21,a8,a,a10)') "CALCULATION ENDED ON ",d," ",t
 
   
-if (langevin .eqv. .true.) then
+if (dynamics .eqv. .true.) then
   call cpu_time(calc_start)
   write (6,*) ""
   write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  write (6,800) "|| RESOLUTION OF THE GENERALIZED LANGEVIN EQUATION ||"
+  write (6,800) "||           CALCULATION OF THE DYNAMICS           ||"
   write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
   write (6,*) ""
 
-  call lang (density)
+  call dyn (density)
 
+  write (6,*) ""
   call cpu_time(calc_end)
   write (6,'(a17,f11.2,a)') "CALCULATION TIME ",calc_end-calc_start,"s"
   call date_and_time(DATE=d,TIME=t)

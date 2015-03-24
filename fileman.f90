@@ -4,7 +4,7 @@ implicit none
 
 integer::filelen
 character(len=filelen)::filename
-integer::act !1 to open, 0 to close, -1 to delete
+integer::act !2 to re-open, 1 to open, 0 to close, -1 to delete
 integer::filenb
 
 integer::io=0

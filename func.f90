@@ -41,14 +41,17 @@ end function
 integer function wits (tab,d)
 !Who is the biggest in this array?
 !=================================================
-  integer::d,i,smalli=0
+  integer::d,i,smalli
   double precision,dimension(d)::tab
   double precision::small=1.0d100
+!  write (6,*) "d=",d
+!  write (6,*) "small=",small
   do i=0,d
     if (tab(i) .lt. small) then
       small=tab(i)
       smalli=i
     end if
+write (6,*) "small=",small
   end do
   wits=smalli
 end function
