@@ -69,7 +69,6 @@ character(len=10)::t
 
 !Functions
 !==================================================
-integer::witb
 logical::liq_glas
 
 
@@ -168,9 +167,9 @@ write (6,*) '     888E  888F u8888cJ888    @  ''888k '
 write (6,*) '    .888N..888   "*888*P"    8F   8888 '
 write (6,*) '     `"888*""      ''Y"      ''8    8888 '
 write (6,*) '        ""                  ''8    888F '
-write (6,*) '                             %k  <88F  '
-write (6,*) '                              "+:*%`   '
-write (6,*) '         VERSION 09022015         '
+write (6,*) '   DYNAMICAL                 %k  <88F  '
+write (6,*) '  DISORDERED ORSTEIN-ZERNIKE  "+:*%`   '
+write (6,*) '       VERSION 25032015           '
 write (6,*) ''
 write (6,'(a24,a8,a,a10)') "CALCULATION LAUNCHED ON ",d," ",t
                                    
@@ -254,6 +253,8 @@ write (6,*) ""
 write (6,900) 'cr_init    = ',cr_init
 write (6,900) 'fq_init    = ',fq_init
 
+if (trans_mode .eq. 'disc') write (6,900) 'fcutoff    = ',fcutoff
+if (dynamics .eqv. .true.) write (6,'(a27)') 'Calculation of the dynamics'
 
 
 
@@ -275,7 +276,7 @@ if (calc_mode .eq. 'sing') then
       write (6,901) "eigen_infl = ",eigenvalue_inflex
       write (6,901) "lamb_infl  = ",lambda_inflex
     end if
-    write (6,901) "conv_fq    = ",fq(witb(fq,a_size))
+    write (6,901) "conv_fq    = ",maxval(fq,dim=1)
   end if
 
   dens_liq=density
@@ -310,7 +311,7 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
       read (11,*) q(i),fq(i)
     end do
     call fileman('fq.dat',6,11,0)
-    conv_fq=fq(witb(fq,a_size))
+    conv_fq=maxval(fq,dim=1)
   end if
   write (6,*) ""
   write (6,901) "density    = ",density
@@ -351,7 +352,7 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
           read (11,*) q(i),fq(i)
         end do
         call fileman('fq.dat',6,11,0)
-        conv_fq=fq(witb(fq,a_size))
+        conv_fq=maxval(fq,dim=1)
       end if
       write (6,*) ""
       if (var_param .eq. 'delt') then
@@ -411,7 +412,7 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
           read (11,*) q(i),fq(i)
         end do
         call fileman('fq.dat',6,11,0)
-        conv_fq=fq(witb(fq,a_size))
+        conv_fq=maxval(fq,dim=1)
       end if
       write (6,*) ""
       if (var_param .eq. 'delt') then
@@ -509,7 +510,7 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
         read (11,*) q(i),fq(i)
       end do
       call fileman('fq.dat',6,11,0)
-      conv_fq=fq(witb(fq,a_size))
+      conv_fq=maxval(fq,dim=1)
     end if
 
     if (liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .true.) then
@@ -701,9 +702,8 @@ else if ((trans_mode .eq. 'cont') .and. (calc_mode .eq. 'dich') .and. (var_param
 
 end if
 
-call fileman('final_res',9,11,1)
-  write (11,'(f22.16,f22.16,f22.16,f22.16)') dens_liq,dens_glas,delt_liq,delt_glas,lambda,eigenvalue
-call fileman('final_res',9,11,0)
+call fileman('calc_ended',10,11,1)
+call fileman('calc_ended',10,11,0)
 
 
 write (6,*) ""
@@ -729,5 +729,8 @@ if (dynamics .eqv. .true.) then
   call date_and_time(DATE=d,TIME=t)
   write (6,'(a21,a8,a,a10)') "CALCULATION ENDED ON ",d," ",t
 end if
+
+call fileman('dyn_ended',9,11,1)
+call fileman('dyn_ended',9,11,0)
 
 end program 

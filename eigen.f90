@@ -23,10 +23,6 @@ double precision,parameter::prec=1.0d-12 !Precision of the calculation
 double precision::h
 integer,parameter::p2=12
 
-!Functions
-!=================================================
-integer::witb
-
 !Arrays
 !=================================================
 integer,parameter::a_size=299
@@ -253,7 +249,7 @@ if (trans_mode .eq. 'disc') then
 
     !Calculate conv1
     !=================================================
-    conv1=fq(witb(fq,a_size))
+    conv1=maxval(fq,dim=1)
 
 
     !Calculatie the new fq(fq)
@@ -275,7 +271,7 @@ if (trans_mode .eq. 'disc') then
 
     !Calculate conv2 and the convergence
     !=================================================
-    conv2=fq(witb(fq,a_size))
+    conv2=maxval(fq,dim=1)
     convergence=dabs(conv2-conv1) !calculate the convergence
   
     !Store the fq at the inflexion point
