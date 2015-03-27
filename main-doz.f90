@@ -253,7 +253,7 @@ write (6,*) ""
 write (6,900) 'cr_init    = ',cr_init
 write (6,900) 'fq_init    = ',fq_init
 
-if (trans_mode .eq. 'disc') write (6,900) 'fcutoff    = ',fcutoff
+if (trans_mode .eq. 'disc') write (6,901) 'fcutoff    = ',fcutoff
 if (dynamics .eqv. .true.) write (6,'(a27)') 'Calculation of the dynamics'
 
 
@@ -276,6 +276,11 @@ if (calc_mode .eq. 'sing') then
       write (6,901) "eigen_infl = ",eigenvalue_inflex
       write (6,901) "lamb_infl  = ",lambda_inflex
     end if
+    call fileman('fq.dat',6,11,1)
+    do i=0,a_size
+      read (11,*) q(i),fq(i)
+    end do
+    call fileman('fq.dat',6,11,0)
     write (6,901) "conv_fq    = ",maxval(fq,dim=1)
   end if
 
@@ -705,6 +710,9 @@ end if
 call fileman('calc_ended',10,11,1)
 call fileman('calc_ended',10,11,0)
 
+call fileman('final_res',9,11,1)
+  write (10,*) dens_liq,dens_glas,delt_liq,delt_glas
+call fileman('final_res',9,11,0)
 
 write (6,*) ""
 call cpu_time(calc_end)
@@ -730,7 +738,7 @@ if (dynamics .eqv. .true.) then
   write (6,'(a21,a8,a,a10)') "CALCULATION ENDED ON ",d," ",t
 end if
 
-call fileman('dyn_ended',9,11,1)
-call fileman('dyn_ended',9,11,0)
+call fileman('dyn_ended',9,10,1)
+call fileman('dyn_ended',9,10,0)
 
 end program 

@@ -14,7 +14,6 @@ logical::flag_inflex,fast
 integer::ik,ip,iq,iter
 double precision::kr,qr,pr
 double precision::convergence
-double precision::conv1,conv2
 
 !Constants
 !=================================================
@@ -26,6 +25,7 @@ integer,parameter::p2=12
 !Arrays
 !=================================================
 integer,parameter::a_size=299
+double precision,dimension(0:a_size)::convtab=0.0d0
 double precision::a,b
 double precision,dimension(0:a_size,0:a_size,0:a_size)::v2 !Intermediate coefficients here,
 double precision,dimension(0:a_size,0:a_size,0:a_size)::v1 !and here
@@ -231,7 +231,7 @@ if (trans_mode .eq. 'disc') then
   flag_inflex=.false.
   err1=0.0d0
   err2=0.0d0
-  superr=1.0d0
+  superr=10.0d0
 
   write (6,*) ""
   write (6,'(a38)') "subiteration ||       f(q) convergence"
@@ -247,18 +247,12 @@ if (trans_mode .eq. 'disc') then
       ffq(iq)=0.0d0
     end do
 
-    !Calculate conv1
-    !=================================================
-    conv1=maxval(fq,dim=1)
-
-
     !Calculatie the new fq(fq)
     !=================================================
     do ip=0,a_size
       do ik=0,a_size
         do iq=0,a_size
-          ffq(iq)=ffq(iq)+v2(iq,ik,ip)*fq(ip)*fq(ik)
-          ffq(iq)=ffq(iq)+v1(iq,ik,ip)*fq(ik)
+          ffq(iq)=ffq(iq)+v2(iq,ik,ip)*fq(ip)*fq(ik)+v1(iq,ik,ip)*fq(ik)
         end do
       end do
     end do
@@ -266,20 +260,22 @@ if (trans_mode .eq. 'disc') then
     !Calculate the new fq
     !=================================================
     do iq=0,a_size
+      fq_old(iq)=fq(iq)
       fq(iq)=ffq(iq)/(1.0d0+ffq(iq))
+      convtab(iq)=dabs(fq(iq)-fq_old(iq))
     end do
 
-    !Calculate conv2 and the convergence
+    !Calculate the convergence array
     !=================================================
-    conv2=maxval(fq,dim=1)
-    convergence=dabs(conv2-conv1) !calculate the convergence
-  
+    convergence=maxval(convtab,dim=1) 
+
+
     !Store the fq at the inflexion point
     !=================================================
     err2=0.0d0
     err1=0.0d0
     do iq=0,a_size
-      err1=abs(fq_old(iq)-fq(iq))
+      err1=convergence
       if (err1 .gt. err2) then
         err2=err1
       end if
@@ -293,15 +289,10 @@ if (trans_mode .eq. 'disc') then
         write (6,'(i7,a28)') iter,"      ||           INFLEXION"
         flag_inflex=.true.
       else
-       superr=err2 
+        superr=err2 
       end if
     end if
   
-    do iq=0,a_size
-      fq_old(iq)=fq(iq)
-    end do
-  
- 
     !Write the convergence
     !=================================================
     if (modulo(iter,10) .eq. 0) write (6,'(i7,a10,es24.16)') iter,"      ||  ",convergence
