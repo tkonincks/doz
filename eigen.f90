@@ -26,6 +26,7 @@ integer,parameter::p2=12
 !=================================================
 integer,parameter::a_size=299
 double precision,dimension(0:a_size)::convtab=0.0d0
+integer::convloc
 double precision::a,b
 double precision,dimension(0:a_size,0:a_size,0:a_size)::v2 !Intermediate coefficients here,
 double precision,dimension(0:a_size,0:a_size,0:a_size)::v1 !and here
@@ -35,7 +36,7 @@ double precision,dimension(0:a_size)::ffq
 double precision,dimension(0:a_size)::fq
 double precision,dimension(0:a_size)::fq_old
 double precision,dimension(0:a_size)::fq_inflex
-double precision::superr,err1,err2
+double precision::superr,err2
 
 double precision,dimension(0:a_size)::q !F-space
 
@@ -218,8 +219,8 @@ if (trans_mode .eq. 'disc') then
 
   else if (fq_init .eq. 'unit') then
     do iq=0,a_size
-     fq(ip)=1.0d0
-     fq_old(ip)=1.0d0
+     fq(iq)=1.0d0
+     fq_old(iq)=1.0d0
     end do
 
   end if
@@ -229,8 +230,7 @@ if (trans_mode .eq. 'disc') then
   convergence=1.0d0
   iter=0
   flag_inflex=.false.
-  err1=0.0d0
-  err2=0.0d0
+  err2=10.0d0
   superr=10.0d0
 
   write (6,*) ""
@@ -262,43 +262,42 @@ if (trans_mode .eq. 'disc') then
     do iq=0,a_size
       fq_old(iq)=fq(iq)
       fq(iq)=ffq(iq)/(1.0d0+ffq(iq))
-      convtab(iq)=dabs(fq(iq)-fq_old(iq))
+      convtab(iq)=dabs(fq(iq)-fq_old(iq)) !store the diferences in convtab
     end do
 
     !Calculate the convergence array
     !=================================================
-    convergence=maxval(convtab,dim=1) 
-
+!    convergence=maxval(convtab) !highest number of convtab=convergence
+    convergence=0.0d0
+    do iq=0,a_size
+      if (convtab(iq) .gt. convergence) convergence=convtab(iq)
+    end do
 
     !Store the fq at the inflexion point
     !=================================================
-    err2=0.0d0
-    err1=0.0d0
-    do iq=0,a_size
-      err1=convergence
-      if (err1 .gt. err2) then
-        err2=err1
-      end if
-    end do
-  
     if ((flag_inflex .eqv. .false.) .and. (convergence .gt. fcutoff)) then
-      if (err2 .gt. superr) then
+    !flag_inflex is false if the inflexion point is not found yet
+
+    !fcutoff is the value below which the inflexion point is not considered anymore
+     !to prevent the finidng of inflexion points at a convergence near 1.0d-12 which is false
+      if (convergence .lt. err2) then
+        err2=convergence
+      else
         do iq=0,a_size
           fq_inflex(iq)=fq(iq)
         end do
         write (6,'(i7,a28)') iter,"      ||           INFLEXION"
         flag_inflex=.true.
-      else
-        superr=err2 
       end if
     end if
-  
+
     !Write the convergence
     !=================================================
     if (modulo(iter,10) .eq. 0) write (6,'(i7,a10,es24.16)') iter,"      ||  ",convergence
+!    write (6,'(i7,a10,es24.16)') iter,"      ||  ",convergence
 
-    if ((flag_inflex .eqv. .true.) .and. (fast .eqv. .true.)) exit
     !No need to calculate the rest if we use the 'fast' option, just stick at the fq_inflex which is a better approximation anyway
+    if ((flag_inflex .eqv. .true.) .and. (fast .eqv. .true.)) exit
 
     do iq=0,a_size
       if (fq(iq) .ne. fq(iq)) then
@@ -309,8 +308,6 @@ if (trans_mode .eq. 'disc') then
 
   end do
   
-  write (6,'(i7,a10,es24.16)') iter,"      ||  ",convergence
-
   !Open the output files and write the result
   !=================================================
   call fileman(fqfile,len(fqfile),11,1)

@@ -736,9 +736,10 @@ if (dynamics .eqv. .true.) then
   write (6,'(a17,f11.2,a)') "CALCULATION TIME ",calc_end-calc_start,"s"
   call date_and_time(DATE=d,TIME=t)
   write (6,'(a21,a8,a,a10)') "CALCULATION ENDED ON ",d," ",t
-end if
 
 call fileman('dyn_ended',9,10,1)
 call fileman('dyn_ended',9,10,0)
+end if
+
 
 end program 
