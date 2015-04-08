@@ -3,6 +3,7 @@ Implemented options:
 *********************
 ***Transition type***
 *********************
+trans_mode stct Structure calculation
 trans_mode cont Continuous transition
 trans_mode loca Diffuzion-Localization
 trans_mode disc Discontinuous transition

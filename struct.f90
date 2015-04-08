@@ -83,7 +83,7 @@ double precision,dimension(0:2**p2)::hcq !Same, in the F-space
 double precision,dimension(0:2**p2)::scq
 double precision,dimension(0:2**p2)::sdq
 
-!These are for the EXPC closure
+!These are for the EXPC and OEXP closure
 double precision,dimension(0:2**p2)::hrref
 double precision,dimension(0:2**p2)::crref
 double precision,dimension(0:2**p2)::crref2
@@ -92,6 +92,18 @@ double precision,dimension(0:2**p2)::cqref
 double precision,dimension(0:2**p2)::gamqref
 double precision,dimension(0:2**p2)::gamrref
 
+!These are for the N3 closure
+double precision,dimension(0:2**p2)::hrorpa
+double precision,dimension(0:2**p2)::hdrorpa
+double precision,dimension(0:2**p2)::ssr
+double precision,dimension(0:2**p2)::ssdr
+double precision,dimension(0:2**p2)::hhr
+double precision,dimension(0:2**p2)::hhdr
+
+double precision,dimension(0:2**p2)::ssq
+double precision,dimension(0:2**p2)::ssdq
+double precision,dimension(0:2**p2)::hhq
+double precision,dimension(0:2**p2)::hhdq
 
 double precision::convergence !Used to calculate the convergence of the calcultaion
 
@@ -149,6 +161,17 @@ do i=0,2**p2
   cqref(i)=0.0d0
   gamqref(i)=0.0d0
   gamrref(i)=0.0d0
+
+  hrorpa(i)=0.0d0
+  hdrorpa(i)=0.0d0
+  ssr(i)=0.0d0
+  ssdr(i)=0.0d0
+  hhr(i)=0.0d0
+  hhdr(i)=0.0d0
+  ssq(i)=0.0d0
+  ssdq(i)=0.0d0
+  hhq(i)=0.0d0
+  hhdq(i)=0.0d0
 end do
 
 eta=density*(pi/6.0d0)
@@ -250,18 +273,6 @@ if ((closure .eq. 'orpa') .or. (closure .eq. 'oexp')) then
   alpha1=((4.0d0+2.0d0*z1-z1**2)*tau1)/(2.0d0*(2.0d0+z1)*sigma1)
   v1v0=2.0d0-dsqrt(qw)-(1.0d0/(2.0d0*v0*dsqrt(qw)))*((v0+fw**2-qw)*(v0+fw**2)+0.25d0*(z1**2)*(qw-fw**2))
   k1=((2.0d0*((z1+2.0d0)**2)*(sigma1**2))/(3.0d0*eta*(z1**2)))*v0*(v1v0-alpha1)**2
-
-!  write (6,*) "eta   ",eta  
-!  write (6,*) "xred  ",xred  
-!  write (6,*) "fw    ",fw    
-!  write (6,*) "qw    ",qw    
-!  write (6,*) "v0    ",v0    
-!  write (6,*) "z1    ",z1    
-!  write (6,*) "sigma1",sigma1
-!  write (6,*) "tau1  ",tau1  
-!  write (6,*) "alpha1",alpha1
-!  write (6,*) "v1v0  ",v1v0  
-!  write (6,*) "k1    ",k1    
 end if
 
 !Iterate!!!!
@@ -328,7 +339,7 @@ do while (convergence .gt. prec)
       cdr2(i)=dexp(k(i)+gamdr(i))-1.0d0-gamdr(i)
     end do
 
-  else if ((closure .eq. 'msac') .or. (closure .eq. 'expc')) then
+  else if ((closure .eq. 'msac') .or. (closure .eq. 'expc') .or. (closure .eq. 'mn3c')) then
 
     do i=0,disc-1
       cr2(i)=-1.0d0-gamr(i)
@@ -401,6 +412,11 @@ do while (convergence .gt. prec)
   do i=0,2**p2
     hr(i)=gamr(i)+cr(i) !hr
     hdr(i)=gamdr(i)+cdr(i) !hdr
+    !Since this value as well as the exp and the ref value will be needed we have to stock it somewhere
+    if (closure .eq. 'mn3c') then
+      hrorpa(i)=hr(i)
+      hdrorpa(i)=hdr(i)
+    end if
     hq(i)=gamq(i)+cq(i) !hq
     hdq(i)=gamdq(i)+cdq(i) !hdq
     hcq(i)=hq(i)-hdq(i) !hcq
@@ -412,7 +428,8 @@ do while (convergence .gt. prec)
 
 end do
 
-if ((closure .eq. 'expc') .or. (closure .eq. 'oexp')) then
+!Better write it here in case you want to restart a calculation
+if ((closure .eq. 'expc') .or. (closure .eq. 'oexp') .or. (closure .eq. 'mn3c')) then
   call fileman(crfile,len(crfile),16,1)
   call fileman(cdrfile,len(cdrfile),17,1)
   do i=0,2**p2
@@ -428,7 +445,7 @@ end if
 
 !Calculation of the reference system for EXPC
 !==================================================
-if (closure .eq. 'expc') then
+if ((closure .eq. 'expc') .or. (closure .eq. 'mn3c')) then
 
   convergence=1.0d0
 
@@ -526,7 +543,7 @@ if (closure .eq. 'expc') then
 
   do i=0,2**p2
     hcq(i)=hq(i)-hdq(i)
-    cq(i)=hq(i)/(1.0d0+density*hq(i))!!!!!!!!!!!!!!!!!!!!!!!!
+    cq(i)=hq(i)/(1.0d0+density*hq(i))
     ccq(i)=hcq(i)/(1.0d0+density*hcq(i))
     cdq(i)=cq(i)-ccq(i)
     scq(i)=1.0d0+density*hcq(i)
@@ -542,6 +559,13 @@ if (closure .eq. 'expc') then
   call fft3s(0.0,cdq(0),p2,rmax,cdr(0),-1,0)
 
 end if
+
+
+
+
+
+
+
 
 
 
@@ -646,7 +670,7 @@ if (closure .eq. 'oexp') then
 
   do i=0,2**p2
     hcq(i)=hq(i)-hdq(i)
-    cq(i)=hq(i)/(1.0d0+density*hq(i))!!!!!!!!!!!!!!!!!!!!!!!!
+    cq(i)=hq(i)/(1.0d0+density*hq(i))
     ccq(i)=hcq(i)/(1.0d0+density*hcq(i))
     cdq(i)=cq(i)-ccq(i)
     scq(i)=1.0d0+density*hcq(i)
@@ -668,6 +692,53 @@ end if
 
 
 
+
+if (closure .eq. 'mn3c') then
+
+  do i=0,2**p2
+    ssr(i)=(hrref(i)+1.0d0)*dexp(hrorpa(i)-hrref(i))-1.0d0-hrorpa(i)+hrref(i)
+    ssdr(i)=dexp(hdrorpa(i))-1.0d0-hdrorpa(i)
+
+    hhr(i)=hrorpa(i)
+    hhdr(i)=hdrorpa(i)
+  end do
+
+  call fft3s(0.0,ssq(0),p2,rmax,ssq(0),1,0)
+  call fft3s(0.0,ssdq(0),p2,rmax,ssdq(0),1,0)
+
+  call fft3s(0.0,hhq(0),p2,rmax,hhq(0),1,0)
+  call fft3s(0.0,hhdq(0),p2,rmax,hhdq(0),1,0)
+
+  do i=0,2**p2
+    hq(i)=(hq(i)+1.0d0)*(1.0d0+2.0d0*density*ssq(i)*hhq(i)+density*ssq(i)**2)-1.0d0
+    hdq(i)=(hdq(i)+1.0d0)*(1.0d0+2.0d0*density*ssdq(i)*hhdq(i)+density*ssdq(i)**2)-1.0d0
+  end do
+
+  call fft3s(0.0,hq(0),p2,rmax,hr(0),-1,0)
+  call fft3s(0.0,hdq(0),p2,rmax,hdr(0),-1,0)
+
+  do i=0,2**p2
+    hcq(i)=hq(i)-hdq(i)
+    cq(i)=hq(i)/(1.0d0+density*hq(i))
+    ccq(i)=hcq(i)/(1.0d0+density*hcq(i))
+    cdq(i)=cq(i)-ccq(i)
+    scq(i)=1.0d0+density*hcq(i)
+    sdq(i)=density*hdq(i)
+  end do
+
+  cr(0)=0.0d0
+  do i=0,2**p2
+    cr(0)=cr(0)+(1.0d0/(2.0d0*pi**2))*(q(i)**2)*cq(i)*dq
+  end do
+
+  call fft3s(0.0,cq(0),p2,rmax,cr(0),-1,0)
+  call fft3s(0.0,cdq(0),p2,rmax,cdr(0),-1,0)
+
+end if
+
+
+
+
 !Print the stuff
 !==================================================
 call fileman(hrfile,len(hrfile),11,1)
@@ -681,6 +752,9 @@ if (closure .eq. 'expc') then
 else if (closure .eq. 'oexp') then
   call fileman('cr_oexp.dat',11,16,1)
   call fileman('cdr_oexp.dat',12,17,1)
+else if (closure .eq. 'mn3c') then
+  call fileman('cr_mn3c.dat',11,16,1)
+  call fileman('cdr_mn3c.dat',12,17,1)
 else
   call fileman(crfile,len(crfile),16,1)
   call fileman(cdrfile,len(cdrfile),17,1)
@@ -711,6 +785,9 @@ if (closure .eq. 'expc') then
 else if (closure .eq. 'oexp') then
   call fileman('cr_oexp.dat',11,16,0)
   call fileman('cdr_oexp.dat',12,17,0)
+else if (closure .eq. 'mn3c') then
+  call fileman('cr_mn3c.dat',11,16,0)
+  call fileman('cdr_mn3c.dat',12,17,0)
 else
   call fileman(crfile,len(crfile),16,0)
   call fileman(cdrfile,len(cdrfile),17,0)

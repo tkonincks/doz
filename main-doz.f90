@@ -216,10 +216,19 @@ end if
 write (6,*) ""
 write (6,800) "           PARAMETERS OF THE CALCULATION             "
 write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-write (6,900) 'trans_mode = ',trans_mode
-write (6,900) 'closure    = ',closure
-write (6,901) 'mix_param  = ',mix_param
-write (6,900) 'calc_mode  = ',calc_mode
+if (trans_mode .eq. 'stct') then
+  write (6,900) 'trans_mode = ',trans_mode                                    
+  write (6,900) 'closure    = ',closure
+
+else
+
+  write (6,900) 'trans_mode = ',trans_mode
+  write (6,900) 'closure    = ',closure
+  write (6,901) 'mix_param  = ',mix_param
+  write (6,900) 'calc_mode  = ',calc_mode
+
+end if
+
 if (fast .eqv. .true.) write (6,'(a19)') "Fast Dichotomy mode"
 
 !Print the parameters
@@ -234,7 +243,7 @@ if (var_param .eq. 'lamb') then
   write (6,901) 'delt_gl_hi = ',delt_gl_hi
   write (6,901) 'sigma      = ',sigma
 
-else if (calc_mode .eq. 'sing') then
+else if ((calc_mode .eq. 'sing') .or. (trans_mode .eq. 'stct')) then
   write (6,901) 'density    = ',density
   write (6,901) 'delta      = ',delta
   write (6,901) 'sigma      = ',sigma
@@ -291,6 +300,9 @@ if (calc_mode .eq. 'sing') then
 
 
 
+
+else if (calc_mode .eq. 'stct') then
+  call struct (density,delta,sigma,closure,mix_param,cr_init)
 
 
 else if (calc_mode .eq. 'rest') then
@@ -711,7 +723,7 @@ call fileman('calc_ended',10,11,1)
 call fileman('calc_ended',10,11,0)
 
 call fileman('final_res',9,11,1)
-  write (10,*) dens_liq,dens_glas,delt_liq,delt_glas
+  write (11,*) dens_liq,dens_glas,delt_liq,delt_glas
 call fileman('final_res',9,11,0)
 
 write (6,*) ""
@@ -737,8 +749,8 @@ if (dynamics .eqv. .true.) then
   call date_and_time(DATE=d,TIME=t)
   write (6,'(a21,a8,a,a10)') "CALCULATION ENDED ON ",d," ",t
 
-call fileman('dyn_ended',9,10,1)
-call fileman('dyn_ended',9,10,0)
+call fileman('dyn_ended',9,11,1)
+call fileman('dyn_ended',9,11,0)
 end if
 
 
