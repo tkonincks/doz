@@ -1,8 +1,9 @@
-subroutine dyn (density)
+subroutine dyn (density,tlimit)
 
 implicit none
 
 double precision::density
+double precision::tlimit
 
 integer::k,l
 
@@ -89,8 +90,6 @@ double precision::m_msd0=0.0d0
 
 double precision,dimension(1:2*t_size)::dr2=0.0d0
 double precision,dimension(1:2*t_size)::ddr2=0.0d0
-
-
 
 integer::wits
 
@@ -230,18 +229,18 @@ call system ('mkdir dyn/')
 write (6,'(a47)') "          time           ||         convergence"
 
 !Write the first values
+write (dr2_file,'(a13)') './dyn/dr2.dat'
+call fileman(dr2_file,len(dr2_file),610,1)
+   write (610,*) 0.0d0,0.0d0
 do ia=0,a_size
   write (phi_file,'(a10,i3.3,a4)') './dyn/phi_',ia,'.dat'
   write (phi_s_file,'(a12,i3.3,a4)') './dyn/phi_s_',ia,'.dat'
-  write (dr2_file,'(a13)') './dyn/dr2.dat'
 
   call fileman(phi_file,len(phi_file),10+ia,1)
   call fileman(phi_s_file,len(phi_s_file),310+ia,1)
-  call fileman(dr2_file,len(dr2_file),610,1)
 
    write (10+ia,*) 0.0d0,1.0d0
    write (310+ia,*) 0.0d0,1.0d0
-   write (610+ia,*) 0.0d0,0.0d0
   do k=1,t_size
     write (10+ia,*) hk*dble(k),phi(k,ia),dphi(k,ia)
     write (310+ia,*) hk*dble(k),phi_s(k,ia),dphi_s(k,ia)
@@ -250,15 +249,15 @@ do ia=0,a_size
 
   call fileman(phi_file,len(phi_file),10+ia,0)
   call fileman(phi_s_file,len(phi_s_file),310+ia,0)
-  call fileman(dr2_file,len(dr2_file),610,0)
 end do
+call fileman(dr2_file,len(dr2_file),610,0)
 
 k=t_size
 iter=dble(k)
 mult=1.0d0
 
 !ITERATION ON THE CONVERGENCE OF PHI(K)
-do while (conv .gt. prec)
+do while ((conv .gt. prec) .or. (hk*dble(iter) .lt. tlimit))
 
   !ITERATION INCREMENTING K
   do while (k .lt. t_size*2)

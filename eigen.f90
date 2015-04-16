@@ -293,8 +293,8 @@ if (trans_mode .eq. 'disc') then
 
     !Write the convergence
     !=================================================
-!    if (modulo(iter,10) .eq. 0) write (6,'(i7,a10,es24.16)') iter,"      ||  ",convergence
-    write (6,'(i7,a10,es24.16)') iter,"      ||  ",convergence
+    if (modulo(iter,10) .eq. 0) write (6,'(i7,a10,es24.16)') iter,"      ||  ",convergence
+!    write (6,'(i7,a10,es24.16)') iter,"      ||  ",convergence
 
     !No need to calculate the rest if we use the 'fast' option, just stick at the fq_inflex which is a better approximation anyway
     if ((flag_inflex .eqv. .true.) .and. (fast .eqv. .true.)) exit

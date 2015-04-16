@@ -1,13 +1,15 @@
 subroutine read (trans_mode,closure,calc_mode,var_param,density,delta,sigma,&
 var_incr,var_prec,var_liq,var_glas,dens_lo,delt_li_lo,delt_gl_lo,dens_hi,&
-delt_li_hi,delt_gl_hi,fast,mix_param,cr_init,fq_init,fcutoff,dynamics)
+delt_li_hi,delt_gl_hi,fast,mix_param,cr_init,fq_init,fcutoff,dynamics,tlimit)
 
 implicit none
 
 character(len=10)::varname
 character(len=4)::trans_mode,closure,calc_mode,var_param,cr_init,fq_init
 double precision::density,delta,sigma,var_incr,var_prec,var_liq,var_glas,&
-dens_lo,delt_li_lo,delt_gl_lo,dens_hi,delt_li_hi,delt_gl_hi,mix_param,fcutoff
+dens_lo,delt_li_lo,delt_gl_lo,dens_hi,delt_li_hi,delt_gl_hi,mix_param,&
+fcutoff,tlimit
+
 logical::fast,dynamics
 
 integer::io=0
@@ -39,6 +41,7 @@ mix_param=0.95
 cr_init='pyev'
 fq_init='unit'
 fcutoff=1.0d-9
+tlimit=1.0d12
 
 
 open (11,file='input.doz')
@@ -94,6 +97,8 @@ do
       read (11,*,iostat=io) fcutoff
     case ('dynamics')
       read (11,*,iostat=io) dynamics
+    case ('tlimit')
+      read (11,*,iostat=io) tlimit
   end select
 
   if (io .ne. 0) exit

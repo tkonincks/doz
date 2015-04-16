@@ -34,10 +34,12 @@ NO DEFAULT VALUE
 *********************************
 ***Calculation of the dynamics***
 *********************************
-dynamics   true Calculation of the correlators phi_c (collective) and phi_s (self)
+dynamics   bbbb Calculation of the correlators phi_c (collective) and phi_s (self)
                 and of the mean square displacement
-
 DEFAULT VALUE false
+
+tlimit     xxxx The calculation will stop if the value of (phi+phi_s) is below 1.0d-12
+                and if the time exceeds tlimit. Put it zero if you want short calculations.
 
 ***************************
 ***Fast dichomoty option***

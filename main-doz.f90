@@ -27,7 +27,7 @@ double precision::lamb_hi
 
 logical::fast,var_fast,dynamics
 
-double precision::mix_param,fcutoff
+double precision::mix_param,fcutoff,tlimit
 
 logical::inflex
 
@@ -169,7 +169,7 @@ write (6,*) '     `"888*""      ''Y"      ''8    8888 '
 write (6,*) '        ""                  ''8    888F '
 write (6,*) '   DYNAMICAL                 %k  <88F  '
 write (6,*) '  DISORDERED ORSTEIN-ZERNIKE  "+:*%`   '
-write (6,*) '       VERSION 25032015           '
+write (6,*) '       VERSION 10042015           '
 write (6,*) ''
 write (6,'(a24,a8,a,a10)') "CALCULATION LAUNCHED ON ",d," ",t
                                    
@@ -185,7 +185,7 @@ write (6,'(a24,a8,a,a10)') "CALCULATION LAUNCHED ON ",d," ",t
 !Call the read subroutine to collect all the data
 call read (trans_mode,closure,calc_mode,var_param,density,delta,sigma,var_incr&
 ,var_prec,var_liq,var_glas,dens_lo,delt_li_lo,delt_gl_lo,dens_hi,delt_li_hi&
-,delt_gl_hi,fast,mix_param,cr_init,fq_init,fcutoff,dynamics)
+,delt_gl_hi,fast,mix_param,cr_init,fq_init,fcutoff,dynamics,tlimit)
 
 prec_eigen=var_prec
 var_fast=fast
@@ -263,8 +263,10 @@ write (6,900) 'cr_init    = ',cr_init
 write (6,900) 'fq_init    = ',fq_init
 
 if (trans_mode .eq. 'disc') write (6,901) 'fcutoff    = ',fcutoff
-if (dynamics .eqv. .true.) write (6,'(a27)') 'Calculation of the dynamics'
-
+if (dynamics .eqv. .true.) then
+  write (6,'(a27)') 'Calculation of the dynamics'
+  write (6,902) 'tlimit     = ',tlimit
+end if
 
 
 
@@ -301,7 +303,7 @@ if (calc_mode .eq. 'sing') then
 
 
 
-else if (calc_mode .eq. 'stct') then
+else if (trans_mode .eq. 'stct') then
   call struct (density,delta,sigma,closure,mix_param,cr_init)
 
 
@@ -723,7 +725,7 @@ call fileman('calc_ended',10,11,1)
 call fileman('calc_ended',10,11,0)
 
 call fileman('final_res',9,11,1)
-  write (11,*) dens_liq,dens_glas,delt_liq,delt_glas
+  write (11,*) dens_liq,dens_glas,delt_liq,delt_glas,lambda,eigenvalue
 call fileman('final_res',9,11,0)
 
 write (6,*) ""
@@ -741,7 +743,7 @@ if (dynamics .eqv. .true.) then
   write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
   write (6,*) ""
 
-  call dyn (density)
+  call dyn (density,tlimit)
 
   write (6,*) ""
   call cpu_time(calc_end)
