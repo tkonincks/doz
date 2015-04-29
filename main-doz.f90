@@ -125,7 +125,7 @@ lamb_hi=0.0d0
                  
 var_incr=1.05d0 !Has to be higher than 1.0d0
 var_prec=0.0d0
-prec_eigen=1.0d-4
+prec_eigen=5.0d-4
 prec_fq=1.0d-6
 prec_lamb=1.0d-6
 
@@ -169,7 +169,7 @@ write (6,*) '     `"888*""      ''Y"      ''8    8888 '
 write (6,*) '        ""                  ''8    888F '
 write (6,*) '   DYNAMICAL                 %k  <88F  '
 write (6,*) '  DISORDERED ORSTEIN-ZERNIKE  "+:*%`   '
-write (6,*) '       VERSION 10042015           '
+write (6,*) '       VERSION 27042015           '
 write (6,*) ''
 write (6,'(a24,a8,a,a10)') "CALCULATION LAUNCHED ON ",d," ",t
                                    
@@ -303,13 +303,21 @@ if (calc_mode .eq. 'sing') then
 
 
 
+
+
+
 else if (trans_mode .eq. 'stct') then
   call struct (density,delta,sigma,closure,mix_param,cr_init)
 
 
-else if (calc_mode .eq. 'rest') then
 
+
+
+
+
+else if (calc_mode .eq. 'rest') then
 goto 1
+
 
 
 
@@ -568,11 +576,25 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
 
     write (6,*) ""
     write (6,*) "ITERATION TIME", iter_end-iter_start,"s"
-  
-    if (dabs(eigenvalue-1.0d0) .lt. prec_eigen) then
-      if (liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .true.) conv_liq=.true.
-      if (liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .false.) conv_glas=.true.
+ 
+    if ((trans_mode .eq. 'cont') .or. (trans_mode .eq. 'loca')) then 
+      if (dabs(eigenvalue-1.0d0) .lt. prec_eigen) then
+        if (liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .true.) conv_liq=.true.
+        if (liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .false.) conv_glas=.true.
+      end if
+    else if (trans_mode .eq. 'disc') then
+
+      call fileman('fq.dat',6,11,1)
+      do i=0,a_size
+        read (11,*) q(i),fq(i)
+      end do
+      call fileman('fq.dat',6,11,0)
+      conv_fq=maxval(fq,dim=1)
+
+      if ((liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .false.) .and. (dabs(eigenvalue-1.0d0) .lt. prec_eigen))     conv_glas=.true.
+      if ((liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .true.) .and. (dabs(eigenvalue_inflex-1.0d0) .lt. (prec_eigen**2))) conv_liq=.true.
     end if
+
  
     if ((conv_liq .eqv. .true.) .and. (conv_glas .eqv. .true.)) exit
  
@@ -725,7 +747,13 @@ call fileman('calc_ended',10,11,1)
 call fileman('calc_ended',10,11,0)
 
 call fileman('final_res',9,11,1)
+
+if ((trans_mode .eq. 'cont') .or. (trans_mode .eq. 'cont')) then
   write (11,*) dens_liq,dens_glas,delt_liq,delt_glas,lambda,eigenvalue
+else if (trans_mode .eq. 'disc') then
+  if (inflex .eq. .true.) write (11,*) dens_liq,dens_glas,delt_liq,delt_glas,lambda_inflex,eigenvalue_inflex
+  if (inflex .eq. .false.) write (11,*) dens_liq,dens_glas,delt_liq,delt_glas,lambda,eigenvalue
+end if
 call fileman('final_res',9,11,0)
 
 write (6,*) ""

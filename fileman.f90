@@ -26,17 +26,16 @@ if (act .eq. 1) then
 
 else if (act .eq. 2) then
 
-  open(filenb,file=filename,status='old',position='append',iostat=io)
+  open(filenb,file=filename,position='append',iostat=io)
 
   if (io .ne. 0) then
 
     write (6,'(19a,10a)') "ERROR OPENING ALREADY EXISTING FILE ",filename
-    write (6,'(9a,i1)') "IOSTAT = ",io
+    write (6,*) "IOSTAT = ",io
     write (6,'(12a)') "EXITING CODE"
     stop
 
   end if
-
 
 !Closing the file
 !==================================================
