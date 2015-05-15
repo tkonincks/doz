@@ -6,7 +6,7 @@ integer::iter
 
 !Inputs of the input.doz file
 !==================================================
-character(len=4)::trans_mode,closure,calc_mode,var_param,cr_init,fq_init
+character(len=4)::trans_mode,closure,calc_mode,var_param,cr_init,fq_init,phi_init
 double precision::density,delta,sigma
 double precision::var_prec
 
@@ -75,12 +75,6 @@ logical::liq_glas
 !For the calculation time
 !==================================================
 double precision::calc_start,calc_end,iter_start,iter_end
-
-
-
-
-
-
 
 
 
@@ -185,7 +179,7 @@ write (6,'(a24,a8,a,a10)') "CALCULATION LAUNCHED ON ",d," ",t
 !Call the read subroutine to collect all the data
 call read (trans_mode,closure,calc_mode,var_param,density,delta,sigma,var_incr&
 ,var_prec,var_liq,var_glas,dens_lo,delt_li_lo,delt_gl_lo,dens_hi,delt_li_hi&
-,delt_gl_hi,fast,mix_param,cr_init,fq_init,fcutoff,dynamics,tlimit)
+,delt_gl_hi,fast,mix_param,cr_init,fq_init,fcutoff,dynamics,tlimit,phi_init)
 
 prec_eigen=var_prec
 var_fast=fast
@@ -263,9 +257,11 @@ write (6,900) 'cr_init    = ',cr_init
 write (6,900) 'fq_init    = ',fq_init
 
 if (trans_mode .eq. 'disc') write (6,901) 'fcutoff    = ',fcutoff
+
 if (dynamics .eqv. .true.) then
   write (6,'(a27)') 'Calculation of the dynamics'
   write (6,902) 'tlimit     = ',tlimit
+  write (6,900) 'phi_init   = ',phi_init
 end if
 
 
@@ -477,7 +473,7 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
 
 
 1 if (var_fast .eqv. .true.) fast=.true.
-  if ((trans_mode .eq. 'disc') .and. (fast .eqv. .false.)) conv_liq=.true.
+!  if ((trans_mode .eq. 'disc') .and. (fast .eqv. .false.)) conv_liq=.true.
 
 
 
@@ -771,7 +767,7 @@ if (dynamics .eqv. .true.) then
   write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
   write (6,*) ""
 
-  call dyn (density,tlimit)
+  call dyn (density,tlimit,phi_init)
 
   write (6,*) ""
   call cpu_time(calc_end)

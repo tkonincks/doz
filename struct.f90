@@ -122,6 +122,7 @@ character(len=6)::crfile='cr.dat'
 character(len=7)::cdrfile='cdr.dat'
 character(len=7)::scqfile='scq.dat'
 character(len=7)::sdqfile='sdq.dat'
+character(len=7)::cdqfile='cdq.dat'
 
 !Initializations
 !==================================================
@@ -761,6 +762,7 @@ else
 end if
 call fileman(scqfile,len(scqfile),18,1)
 call fileman(sdqfile,len(sdqfile),19,1)
+call fileman(cdqfile,len(cdqfile),20,1)
 
 do i=0,2**p2
   write(11,*) r(i),hr(i)
@@ -772,6 +774,7 @@ do i=0,2**p2
   write(17,*) r(i),cdr(i)
   write(18,*) q(i),scq(i)
   write(19,*) q(i),sdq(i)
+  write(20,*) q(i),cdq(i)
 end do
 
 call fileman(hrfile,len(hrfile),11,0)
@@ -794,5 +797,6 @@ else
 end if
 call fileman(scqfile,len(scqfile),18,0)
 call fileman(sdqfile,len(sdqfile),19,0)
+call fileman(cdqfile,len(cdqfile),20,0)
 
 end subroutine

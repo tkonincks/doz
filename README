@@ -15,10 +15,11 @@ NO DEFAULT VALUE
 **********************
 closure    hncc HyperNetted Chain closure
 closure    msac Mean Square Approximation closure
-closure    expc MSA exponential closure
 closure    orpa Optimized Random Phaze Approximation
+closure    expc MSA exponential closure
 closure    oexp ORPA exponential closure
 closure    pyev Percus-Yevick closure
+closure    mn3c N3 closure on a MSA basis
 
 NO DEFAULT VALUE
 
@@ -36,23 +37,38 @@ NO DEFAULT VALUE
 *********************************
 dynamics   bbbb Calculation of the correlators phi_c (collective) and phi_s (self)
                 and of the mean square displacement
+
 DEFAULT VALUE false
 
 tlimit     xxxx The calculation will stop if the value of (phi+phi_s) is below 1.0d-12
                 and if the time exceeds tlimit. Put it zero if you want short calculations.
 
-***************************
-***Fast dichomoty option***
-***************************
+DEFAULT VALUE 1.0d12
+
+**************************************
+***Discontinuous transition options***
+**************************************
 fast       false/true Fast Dichotomy mode
-fcutoff    the value below which the inflexion if not considered
 
 If an inflexion point is found, f(q) at the inflexion point is used instead of the converged one.
-Do not use with a too high precision because inflexion points may happen en in glass phase when calculating very close to the transition.
+Do not use with a too high precision because inflexion points may happen in glass phase when calculating very close to the transition.
 Only works when calculating the discontinuous transition and using dich or rest options
 
 DEFAULT VALUE .false.
+
+fcutoff    the value below which the inflexion if not considered
+fcutoff may be useful to tune the way you use the fast option
+
 DEFAULT VALUE 1.0d-9
+
+******************************************
+***Initialization of phi, phi_s and dr2***
+******************************************
+phi_init   none No initialization, the calculation starts from t=0
+phi_init   file Reads the phi, phi_s and dr2 in the dyn directory that has been created with a previous calculation. Once the end of the files has been reached, the calculation then continues normally and ends if the convergence and the time limit is reached.
+If there is no dyn directory in the working directory, the calculation will stop, be careful.
+
+DEFAULT VALUE none
 
 ****************************************
 ***Varying parameter in the dichotomy***
@@ -101,7 +117,7 @@ xxxx: Float number.
       Fortran double precision convention (x.xxdxx) may be used.
 bbbb: Boolean (true/false)
 
-These are examples of jobs you can run, however the order can be changed.
+These are examples of jobs you can run (the order of the keywords can be changed)
 
 Single point:
 
@@ -164,4 +180,29 @@ delt_li_hi xxxx
 delt_gl_hi xxxx
 sigma      xxxx
 
+Structure calculation:
 
+trans_mode stct
+closure    yyyy
+density    xxxx
+delta      xxxx
+sigma      xxxx
+
+Dynamics calculation:
+
+trans_mode stct
+closure    yyyy
+density    xxxx
+delta      xxxx
+sigma      xxxx
+dynamics   true
+
+Dynamics restart:
+
+trans_mode stct
+closure    yyyy
+density    xxxx
+delta      xxxx
+sigma      xxxx
+dynamics   true
+phi_init   file

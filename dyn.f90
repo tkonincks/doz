@@ -1,9 +1,10 @@
-subroutine dyn (density,tlimit)
+subroutine dyn (density,tlimit,phi_init)
 
 implicit none
 
 double precision::density
 double precision::tlimit
+character(len=4)::phi_init
 
 integer::k,l
 
@@ -28,6 +29,14 @@ double precision::mult
 
 integer::kk
 double precision::iter
+
+!To restart the calculation
+
+logical::ex=.false. !to test the existence of a file or directory
+integer::clines_dyn
+integer::nlines
+integer::recline=0
+integer::io=0
 
 double precision,dimension(0:a_size)::q
 double precision,dimension(0:a_size)::ccq
@@ -96,6 +105,10 @@ integer::wits
 character(len=20)::phi_file
 character(len=20)::phi_s_file
 character(len=20)::dr2_file
+
+character(len=25)::phi_inpt_file
+character(len=25)::phi_s_inpt_file
+character(len=25)::dr2_inpt_file
 
 call fileman('ccq.dat',7,11,1)
 call fileman('hcq.dat',7,12,1)
@@ -223,38 +236,73 @@ do ia=0,a_size
   end do
 end do
 
+!If the calculation was already made, store the old stuff in dyn_inpt
+if (phi_init .eq. 'file') then
+  inquire (directory='dyn', exist=ex)
+  if (ex .eqv. .true.) then
+    nlines=clines_dyn()
+    call system ('mv dyn dyn_inpt')
+    do ia=0,a_size
+      write (phi_inpt_file,'(a13,i3.3,a4)') 'dyn_inpt/phi_',ia,'.dat'
+      write (phi_s_inpt_file,'(a15,i3.3,a4)') 'dyn_inpt/phi_s_',ia,'.dat'
+!      open(unit=710+ia,iostat=io,file=phi_inpt_file,access='sequential',form='formatted')
+!      open(unit=1010+ia,iostat=io,file=phi_s_inpt_file,access='sequential',form='formatted')
+      call fileman(phi_inpt_file,len(phi_inpt_file),710+ia,1)
+      call fileman(phi_s_inpt_file,len(phi_s_inpt_file),1010+ia,1)
+    end do
+    write (dr2_inpt_file,'(a16)') 'dyn_inpt/dr2.dat'
+!    open(unit=612,file=dr2_inpt_file,access='sequential',form='formatted')
+    call fileman(dr2_inpt_file,len(dr2_inpt_file),612,1)
+    do k=1,t_size+1
+      do ia=0,a_size
+        read (710+ia,*) a,phi(k,ia)
+        read (1010+ia,*) a,phi_s(k,ia)
+      end do
+      read (612,*) a,dr2(k)
+    end do
+
+  else
+    write (6,*) 'No files for phi, please check your inputs.'
+    stop
+  end if
+end if
+
+
 !Create a folder to stock all the phi files
 call system ('mkdir dyn/')
 
 write (6,'(a47)') "          time           ||         convergence"
 
 !Write the first values
-write (dr2_file,'(a13)') './dyn/dr2.dat'
+write (dr2_file,'(a11)') 'dyn/dr2.dat'
 call fileman(dr2_file,len(dr2_file),610,1)
-   write (610,*) 0.0d0,0.0d0
+write (610,*) 0.0d0,0.0d0
 do ia=0,a_size
-  write (phi_file,'(a10,i3.3,a4)') './dyn/phi_',ia,'.dat'
-  write (phi_s_file,'(a12,i3.3,a4)') './dyn/phi_s_',ia,'.dat'
+  write (phi_file,'(a8,i3.3,a4)') 'dyn/phi_',ia,'.dat'
+  write (phi_s_file,'(a10,i3.3,a4)') 'dyn/phi_s_',ia,'.dat'
 
   call fileman(phi_file,len(phi_file),10+ia,1)
   call fileman(phi_s_file,len(phi_s_file),310+ia,1)
 
-   write (10+ia,*) 0.0d0,1.0d0
-   write (310+ia,*) 0.0d0,1.0d0
+  write (10+ia,*) 0.0d0,1.0d0
+  write (310+ia,*) 0.0d0,1.0d0
   do k=1,t_size
-    write (10+ia,*) hk*dble(k),phi(k,ia),dphi(k,ia)
-    write (310+ia,*) hk*dble(k),phi_s(k,ia),dphi_s(k,ia)
-    write (610,*) hk*dble(k),dr2(k)
+    write (10+ia,*) hk*dble(k),phi(k,ia)
+    write (310+ia,*) hk*dble(k),phi_s(k,ia)
   end do
-
   call fileman(phi_file,len(phi_file),10+ia,0)
   call fileman(phi_s_file,len(phi_s_file),310+ia,0)
+end do
+do k=1,t_size
+  write (610,*) hk*dble(k),dr2(k)
 end do
 call fileman(dr2_file,len(dr2_file),610,0)
 
 k=t_size
 iter=dble(k)
 mult=1.0d0
+
+recline=100 !for the restart, counts the line at which we read
 
 !ITERATION ON THE CONVERGENCE OF PHI(K)
 do while ((conv .gt. prec) .or. (hk*dble(iter) .lt. tlimit))
@@ -266,126 +314,153 @@ do while ((conv .gt. prec) .or. (hk*dble(iter) .lt. tlimit))
     kk=aint(dble(k)/2.0d0)
     iter=iter+mult
 
-    !Calculate C
-    !=================================================
-    do ia=0,a_size
-      ck(ia)=m(kk,ia)*phi(k-kk,ia)-m(k-1,ia)*dphi(1,ia)-phi(k-1,ia)*dm(1,ia)
-      ck_s(ia)=m_s(kk,ia)*phi_s(k-kk,ia)-m_s(k-1,ia)*dphi_s(1,ia)-phi_s(k-1,ia)*dm_s(1,ia)
-    end do
-    do ia=0,a_size
+    if (phi_init .eq. 'none') then
+
+      !Calculate C
+      !=================================================
+      do ia=0,a_size
+        ck(ia)=m(kk,ia)*phi(k-kk,ia)-m(k-1,ia)*dphi(1,ia)-phi(k-1,ia)*dm(1,ia)
+        ck_s(ia)=m_s(kk,ia)*phi_s(k-kk,ia)-m_s(k-1,ia)*dphi_s(1,ia)-phi_s(k-1,ia)*dm_s(1,ia)
+      end do
+      do ia=0,a_size
+        do l=2,kk
+          ck(ia)=ck(ia)+(phi(k-l+1,ia)-phi(k-l,ia))*dm(l,ia)
+          ck_s(ia)=ck_s(ia)+(phi_s(k-l+1,ia)-phi_s(k-l,ia))*dm_s(l,ia)
+        end do
+      end do
+      do ia=0,a_size
+        do l=2,k-kk
+          ck(ia)=ck(ia)+(m(k-l+1,ia)-m(k-l,ia))*dphi(l,ia)
+          ck_s(ia)=ck_s(ia)+(m_s(k-l+1,ia)-m_s(k-l,ia))*dphi_s(l,ia)
+        end do
+      end do
+
+      ck_msd=m_msd(kk)*dr2(k-kk)-m_msd(k-1)*ddr2(1)-dr2(k-1)*dm_msd(1)
       do l=2,kk
-        ck(ia)=ck(ia)+(phi(k-l+1,ia)-phi(k-l,ia))*dm(l,ia)
-        ck_s(ia)=ck_s(ia)+(phi_s(k-l+1,ia)-phi_s(k-l,ia))*dm_s(l,ia)
+        ck_msd=ck_msd+(dr2(k-l+1)-dr2(k-l))*dm_msd(l)
       end do
-    end do
-    do ia=0,a_size
       do l=2,k-kk
-        ck(ia)=ck(ia)+(m(k-l+1,ia)-m(k-l,ia))*dphi(l,ia)
-        ck_s(ia)=ck_s(ia)+(m_s(k-l+1,ia)-m_s(k-l,ia))*dphi_s(l,ia)
+        ck_msd=ck_msd+(m_msd(k-l+1)-m_msd(k-l))*ddr2(l)
       end do
-    end do
 
-    ck_msd=m_msd(kk)*dr2(k-kk)-m_msd(k-1)*ddr2(1)-dr2(k-1)*dm_msd(1)
-    do l=2,kk
-      ck_msd=ck_msd+(dr2(k-l+1)-dr2(k-l))*dm_msd(l)
-    end do
-    do l=2,k-kk
-      ck_msd=ck_msd+(m_msd(k-l+1)-m_msd(k-l))*ddr2(l)
-    end do
-
-    !Calculate D
-    !=================================================
-    do ia=0,a_size
-      factd1(ia)=tau(ia)/(2.0d0*hk*mult)
-      factd1_s(ia)=tau_s(ia)/(2.0d0*hk*mult)
-      dk(ia)=ck(ia)-factd1(ia)*(4.0d0*phi(k-1,ia)-phi(k-2,ia))
-      dk_s(ia)=ck_s(ia)-factd1_s(ia)*(4.0d0*phi_s(k-1,ia)-phi_s(k-2,ia))
-
-      !take the last value of phi for a good guess
-      phik(ia)=phi(k-1,ia)
-      phik_s(ia)=phi_s(k-1,ia)
-    end do
-
-    !ITERATE TO CONVERGE PHI AND 
-    !=================================================
-    conv_phik=1.0d0
-    do while (conv_phik .gt. prec_phik)
-
+      !Calculate D
+      !=================================================
       do ia=0,a_size
-        mk(ia)=0.0d0
-        mk_s(ia)=0.0d0
+        factd1(ia)=tau(ia)/(2.0d0*hk*mult)
+        factd1_s(ia)=tau_s(ia)/(2.0d0*hk*mult)
+        dk(ia)=ck(ia)-factd1(ia)*(4.0d0*phi(k-1,ia)-phi(k-2,ia))
+        dk_s(ia)=ck_s(ia)-factd1_s(ia)*(4.0d0*phi_s(k-1,ia)-phi_s(k-2,ia))
+
+        !take the last value of phi for a good guess
+        phik(ia)=phi(k-1,ia)
+        phik_s(ia)=phi_s(k-1,ia)
       end do
 
-      do ip=0,a_size
-        do ik=0,a_size
-          do iq=0,a_size
-            mk(iq)=mk(iq)+v2(iq,ik,ip)*phik(ip)*phik(ik)+v1(iq,ik,ip)*phik(ik)
+      !ITERATE TO CONVERGE PHI AND 
+      !=================================================
+      conv_phik=1.0d0
+      do while (conv_phik .gt. prec_phik)
+
+        do ia=0,a_size
+          mk(ia)=0.0d0
+          mk_s(ia)=0.0d0
+        end do
+
+        do ip=0,a_size
+          do ik=0,a_size
+            do iq=0,a_size
+              mk(iq)=mk(iq)+v2(iq,ik,ip)*phik(ip)*phik(ik)+v1(iq,ik,ip)*phik(ik)
+            end do
           end do
         end do
-      end do
 
-      do ia=0,a_size
-        phik2(ia)=(mk(ia)*(1.0d0-dphi(1,ia))-dk(ia))/(1.0d0+dm(1,ia)+3.0d0*factd1(ia))
-      end do
+        do ia=0,a_size
+          phik2(ia)=(mk(ia)*(1.0d0-dphi(1,ia))-dk(ia))/(1.0d0+dm(1,ia)+3.0d0*factd1(ia))
+        end do
 
-      do ip=0,a_size
-        do ik=0,a_size
-          do iq=0,a_size
-            mk_s(iq)=mk_s(iq)+v2_s(iq,ik,ip)*phik_s(ik)*phik2(ip)+v1_s(iq,ik,ip)*phik_s(ik)
+        do ip=0,a_size
+          do ik=0,a_size
+            do iq=0,a_size
+              mk_s(iq)=mk_s(iq)+v2_s(iq,ik,ip)*phik_s(ik)*phik2(ip)+v1_s(iq,ik,ip)*phik_s(ik)
+            end do
           end do
         end do
+
+        do ia=0,a_size
+          phik_s2(ia)=(mk_s(ia)*(1.0d0-dphi_s(1,ia))-dk_s(ia))/(1.0d0+dm_s(1,ia)+3.0d0*factd1_s(ia))
+        end do
+
+        conv_phik=0.0d0
+        do ia=0,a_size
+          conv_phik=conv_phik+dabs(phik2(ia)-phik(ia))+dabs(phik_s2(ia)-phik_s(ia))
+
+          phik(ia)=phik2(ia)
+          phik_s(ia)=phik_s2(ia)
+        end do
+
       end do
+
+      !One last calculation of phi, m and their primitives
+      do ia=0,a_size
+        phi(k,ia)=phik(ia)
+        phi_s(k,ia)=phik_s(ia)
+
+        m(k,ia)=mk(ia)
+        m_s(k,ia)=mk_s(ia)
+      end do
+
+      !Calculation of the mean square displacement
+      m_msd(k)=0.0d0
+      do ia=0,a_size
+        m_msd(k)=m_msd(k)+w2(ia)*phi_s(k,ia)*phi(k,ia)+w1(ia)*phi_s(k,ia)
+      end do
+    
+      dk_msd=m_msd(k)*ddr2(1)-(4.0d0*dr2(k-1)-dr2(k-2))/(2.0d0*d0*hk*mult)+ck_msd
+    
+      dr2(k)=(6.0d0*d0-d0*dk_msd)/(d0*dm_msd(1)+3.0d0/(2.0d0*hk*mult))
+
+    else if (phi_init .eq. 'file') then
 
       do ia=0,a_size
-        phik_s2(ia)=(mk_s(ia)*(1.0d0-dphi_s(1,ia))-dk_s(ia))/(1.0d0+dm_s(1,ia)+3.0d0*factd1_s(ia))
+        read (710+ia,*) a,phi(k,ia)
+        read (1010+ia,*) a,phi_s(k,ia)
       end do
 
-      conv_phik=0.0d0
-      do ia=0,a_size
-        conv_phik=conv_phik+dabs(phik2(ia)-phik(ia))+dabs(phik_s2(ia)-phik_s(ia))
+      read (612,*) a,dr2(k)
 
-        phik(ia)=phik2(ia)
-        phik_s(ia)=phik_s2(ia)
-      end do
+      if (recline .eq. nlines) then
+        phi_init='none'
+        do ia=0,a_size
+          close (710+ia)
+          close (1010+ia)
+!          call fileman(phi_inpt_file,len(phi_inpt_file),710+ia,0)
+!          call fileman(phi_s_inpt_file,len(phi_s_inpt_file),1010+ia,0)
+        end do
+        close (612)
+!        call fileman(dr2_inpt_file,len(dr2_inpt_file),612,0)
+      end if
+ 
+      recline=recline+1
 
-    end do
-
-    !One last calculation of phi, m and their primitives
-    do ia=0,a_size
-      phi(k,ia)=phik(ia)
-      phi_s(k,ia)=phik_s(ia)
-
-      m(k,ia)=mk(ia)
-      m_s(k,ia)=mk_s(ia)
-    end do
-
-    !Calculation of the mean square displacement
-    m_msd(k)=0.0d0
-    do ia=0,a_size
-      m_msd(k)=m_msd(k)+w2(ia)*phi_s(k,ia)*phi(k,ia)+w1(ia)*phi_s(k,ia)
-    end do
-
-    dk_msd=m_msd(k)*ddr2(1)-(4.0d0*dr2(k-1)-dr2(k-2))/(2.0d0*d0*hk*mult)+ck_msd
-
-    dr2(k)=(6.0d0*d0-d0*dk_msd)/(d0*dm_msd(1)+3.0d0/(2.0d0*hk*mult))
+    end if
 
     !Write the stuff
     !=================================================
     do ia=0,a_size
-      write (phi_file,'(a10,i3.3,a4)') './dyn/phi_',ia,'.dat'
-      write (phi_s_file,'(a12,i3.3,a4)') './dyn/phi_s_',ia,'.dat'
+      write (phi_file,'(a8,i3.3,a4)') 'dyn/phi_',ia,'.dat'
+      write (phi_s_file,'(a10,i3.3,a4)') 'dyn/phi_s_',ia,'.dat'
 
       call fileman(phi_file,len(phi_file),10+ia,2)
       call fileman(phi_s_file,len(phi_s_file),310+ia,2)
 
-      write (10+ia,*) hk*iter,phi(k,ia),dphi(k,ia)
-      write (310+ia,*) hk*iter,phi_s(k,ia),dphi_s(k,ia)
+      write (10+ia,*) hk*iter,phi(k,ia)
+      write (310+ia,*) hk*iter,phi_s(k,ia)
 
       call fileman(phi_file,len(phi_file),10+ia,0)
       call fileman(phi_s_file,len(phi_s_file),310+ia,0)
     end do
 
-    write (dr2_file,'(a13)') './dyn/dr2.dat'
+    write (dr2_file,'(a11)') 'dyn/dr2.dat'
     call fileman(dr2_file,len(dr2_file),610,2)
     write (610,*) hk*iter,dr2(k)
     call fileman(dr2_file,len(dr2_file),610,0)

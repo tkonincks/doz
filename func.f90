@@ -89,3 +89,16 @@ logical function liq_glas (trans_mode,fast,eigenvalue,conv_fq,flag_inflex)
   end if
 
 end function
+
+
+integer function clines_dyn ()
+  implicit none
+  integer::n
+  character(len=100):: path,cmd
+  write(cmd,'(a50)') "cat dyn/dr2.dat | grep '[^ ]' | wc -l > clines.tmp"
+  call system(cmd)
+  open(11,file='clines.tmp')
+  read(11,*) clines_dyn
+  close(11)
+  call system('rm -f clines.tmp')
+end function
