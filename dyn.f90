@@ -253,12 +253,13 @@ if (phi_init .eq. 'file') then
     write (dr2_inpt_file,'(a16)') 'dyn_inpt/dr2.dat'
 !    open(unit=612,file=dr2_inpt_file,access='sequential',form='formatted')
     call fileman(dr2_inpt_file,len(dr2_inpt_file),612,1)
-    do k=1,t_size+1
+    do k=1,t_size
       do ia=0,a_size
         read (710+ia,*) a,phi(k,ia)
         read (1010+ia,*) a,phi_s(k,ia)
       end do
       read (612,*) a,dr2(k)
+      recline=recline+1
     end do
 
   else
@@ -302,7 +303,7 @@ k=t_size
 iter=dble(k)
 mult=1.0d0
 
-recline=100 !for the restart, counts the line at which we read
+!recline=100 !for the restart, counts the line at which we read
 
 !ITERATION ON THE CONVERGENCE OF PHI(K)
 do while ((conv .gt. prec) .or. (hk*dble(iter) .lt. tlimit))
@@ -428,16 +429,16 @@ do while ((conv .gt. prec) .or. (hk*dble(iter) .lt. tlimit))
 
       read (612,*) a,dr2(k)
 
-      if (recline .eq. nlines) then
+      if (recline .ge. nlines-1) then
         phi_init='none'
         do ia=0,a_size
-          close (710+ia)
-          close (1010+ia)
-!          call fileman(phi_inpt_file,len(phi_inpt_file),710+ia,0)
-!          call fileman(phi_s_inpt_file,len(phi_s_inpt_file),1010+ia,0)
+!          close (710+ia)
+!          close (1010+ia)
+          call fileman(phi_inpt_file,len(phi_inpt_file),710+ia,0)
+          call fileman(phi_s_inpt_file,len(phi_s_inpt_file),1010+ia,0)
         end do
-        close (612)
-!        call fileman(dr2_inpt_file,len(dr2_inpt_file),612,0)
+!        close (612)
+        call fileman(dr2_inpt_file,len(dr2_inpt_file),612,0)
       end if
  
       recline=recline+1
