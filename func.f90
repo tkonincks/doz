@@ -95,7 +95,7 @@ integer function clines_dyn ()
   implicit none
   integer::n
   character(len=100):: path,cmd
-  write(cmd,'(a50)') "cat dyn/dr2.dat | grep '[^ ]' | wc -l > clines.tmp"
+  write(cmd,'(a54)') "cat dyn/phi_000.dat | grep '[^ ]' | wc -l > clines.tmp"
   call system(cmd)
   open(11,file='clines.tmp')
   read(11,*) clines_dyn

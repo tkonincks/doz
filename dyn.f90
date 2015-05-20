@@ -100,6 +100,10 @@ double precision::m_msd0=0.0d0
 double precision,dimension(1:2*t_size)::dr2=0.0d0
 double precision,dimension(1:2*t_size)::ddr2=0.0d0
 
+!For the calculation of the non-gaussian parameter
+double precision,dimension(1:2*t_size)::alpha2
+double precision,dimension(1:2*t_size,0,a_size)::m_ngp
+
 integer::wits
 
 character(len=20)::phi_file
@@ -245,20 +249,20 @@ if (phi_init .eq. 'file') then
     do ia=0,a_size
       write (phi_inpt_file,'(a13,i3.3,a4)') 'dyn_inpt/phi_',ia,'.dat'
       write (phi_s_inpt_file,'(a15,i3.3,a4)') 'dyn_inpt/phi_s_',ia,'.dat'
-!      open(unit=710+ia,iostat=io,file=phi_inpt_file,access='sequential',form='formatted')
-!      open(unit=1010+ia,iostat=io,file=phi_s_inpt_file,access='sequential',form='formatted')
       call fileman(phi_inpt_file,len(phi_inpt_file),710+ia,1)
       call fileman(phi_s_inpt_file,len(phi_s_inpt_file),1010+ia,1)
     end do
-    write (dr2_inpt_file,'(a16)') 'dyn_inpt/dr2.dat'
-!    open(unit=612,file=dr2_inpt_file,access='sequential',form='formatted')
-    call fileman(dr2_inpt_file,len(dr2_inpt_file),612,1)
+
+    do ia=0,a_size
+      read (710+ia,*) a,phi(k,ia)
+      read (1010+ia,*) a,phi_s(k,ia)
+    end do
+
     do k=1,t_size
       do ia=0,a_size
         read (710+ia,*) a,phi(k,ia)
         read (1010+ia,*) a,phi_s(k,ia)
       end do
-      read (612,*) a,dr2(k)
       recline=recline+1
     end do
 
@@ -357,7 +361,7 @@ do while ((conv .gt. prec) .or. (hk*dble(iter) .lt. tlimit))
         phik_s(ia)=phi_s(k-1,ia)
       end do
 
-      !ITERATE TO CONVERGE PHI AND 
+      !Iterate to converge phi and phi_s
       !=================================================
       conv_phik=1.0d0
       do while (conv_phik .gt. prec_phik)
@@ -420,34 +424,72 @@ do while ((conv .gt. prec) .or. (hk*dble(iter) .lt. tlimit))
     
       dr2(k)=(6.0d0*d0-d0*dk_msd)/(d0*dm_msd(1)+3.0d0/(2.0d0*hk*mult))
 
+
+
+
+
     else if (phi_init .eq. 'file') then
 
+!Read the phi and phi_s
       do ia=0,a_size
         read (710+ia,*) a,phi(k,ia)
         read (1010+ia,*) a,phi_s(k,ia)
       end do
 
-      read (612,*) a,dr2(k)
+!Calculate m, m_s, and dr2
+      do ia=0,a_size
+        mk(ia)=0.0d0
+        mk_s(ia)=0.0d0
+      end do
 
-      if (recline .ge. nlines-1) then
+      do ip=0,a_size
+        do ik=0,a_size
+          do iq=0,a_size
+            m(k,iq)=m(k,iq)+v2(iq,ik,ip)*phi(k,ip)*phi(k,ik)+v1(iq,ik,ip)*phi(k,ik)
+            m_s(k,iq)=m_s(k,iq)+v2_s(iq,ik,ip)*phi_s(k,ik)*phi(k,ip)+v1_s(iq,ik,ip)*phi_s(k,ik)
+          end do
+        end do
+      end do
+
+      m_msd(k)=0.0d0
+      do ia=0,a_size
+        m_msd(k)=m_msd(k)+w2(ia)*phi_s(k,ia)*phi(k,ia)+w1(ia)*phi_s(k,ia)
+      end do
+    
+      ck_msd=m_msd(kk)*dr2(k-kk)-m_msd(k-1)*ddr2(1)-dr2(k-1)*dm_msd(1)
+      do l=2,kk
+        ck_msd=ck_msd+(dr2(k-l+1)-dr2(k-l))*dm_msd(l)
+      end do
+      do l=2,k-kk
+        ck_msd=ck_msd+(m_msd(k-l+1)-m_msd(k-l))*ddr2(l)
+      end do
+
+      dk_msd=m_msd(k)*ddr2(1)-(4.0d0*dr2(k-1)-dr2(k-2))/(2.0d0*d0*hk*mult)+ck_msd
+    
+      dr2(k)=(6.0d0*d0-d0*dk_msd)/(d0*dm_msd(1)+3.0d0/(2.0d0*hk*mult))
+
+      recline=recline+1
+
+write (6,*) recline, nlines
+ 
+      if (recline .eq. nlines-1) then
         phi_init='none'
         do ia=0,a_size
-!          close (710+ia)
-!          close (1010+ia)
           call fileman(phi_inpt_file,len(phi_inpt_file),710+ia,0)
           call fileman(phi_s_inpt_file,len(phi_s_inpt_file),1010+ia,0)
         end do
-!        close (612)
-        call fileman(dr2_inpt_file,len(dr2_inpt_file),612,0)
+        goto 11
       end if
- 
-      recline=recline+1
+
 
     end if
 
+
+
+
     !Write the stuff
     !=================================================
-    do ia=0,a_size
+11  do ia=0,a_size
       write (phi_file,'(a8,i3.3,a4)') 'dyn/phi_',ia,'.dat'
       write (phi_s_file,'(a10,i3.3,a4)') 'dyn/phi_s_',ia,'.dat'
 
