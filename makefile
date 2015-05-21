@@ -4,8 +4,9 @@ GC=ifort
 
 ifeq ($(GC),ifort)
 
-GOPT=-mtune=generic -O2 -xHost -ipo
+GOPT=-march=corei7 -mtune=corei7 -O2 -ipo
 
+# -xHost
 # -msse4a
 
 $(EXEC): main-doz.o read.o struct.o eigen.o dyn.o fft.o fileman.o func.o 

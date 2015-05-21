@@ -163,7 +163,7 @@ write (6,*) '     `"888*""      ''Y"      ''8    8888 '
 write (6,*) '        ""                  ''8    888F '
 write (6,*) '   DYNAMICAL                 %k  <88F  '
 write (6,*) '  DISORDERED ORSTEIN-ZERNIKE  "+:*%`   '
-write (6,*) '       VERSION 27042015           '
+write (6,*) '       VERSION 21052015           '
 write (6,*) ''
 write (6,'(a24,a8,a,a10)') "CALCULATION LAUNCHED ON ",d," ",t
                                    
@@ -312,7 +312,7 @@ else if (trans_mode .eq. 'stct') then
 
 
 else if (calc_mode .eq. 'rest') then
-goto 1
+goto 11
 
 
 
@@ -472,7 +472,7 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
 
 
 
-1 if (var_fast .eqv. .true.) fast=.true.
+11 if (var_fast .eqv. .true.) fast=.true.
 !  if ((trans_mode .eq. 'disc') .and. (fast .eqv. .false.)) conv_liq=.true.
 
 

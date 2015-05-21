@@ -56,6 +56,7 @@ double precision,dimension(1:2*t_size,0:a_size)::dphi=0.0d0
 double precision,dimension(0:a_size)::phik=0.0d0
 double precision,dimension(0:a_size)::phik2=0.0d0
 double precision::conv_phik=1.0d0
+double precision::conv_phik_s=1.0d0
 double precision::prec_phik=1.0d-12
 double precision,dimension(0:a_size)::mk=0.0d0
 
@@ -368,7 +369,6 @@ do while ((conv .gt. prec) .or. (hk*dble(iter) .lt. tlimit))
 
         do ia=0,a_size
           mk(ia)=0.0d0
-          mk_s(ia)=0.0d0
         end do
 
         do ip=0,a_size
@@ -383,10 +383,30 @@ do while ((conv .gt. prec) .or. (hk*dble(iter) .lt. tlimit))
           phik2(ia)=(mk(ia)*(1.0d0-dphi(1,ia))-dk(ia))/(1.0d0+dm(1,ia)+3.0d0*factd1(ia))
         end do
 
+        conv_phik=0.0d0
+        do ia=0,a_size
+          conv_phik=conv_phik+dabs(phik2(ia)-phik(ia))
+        end do
+
+        do ia=0,a_size
+          phik(ia)=phik2(ia)
+        end do
+
+      end do
+
+
+
+      conv_phik_s=1.0d0
+      do while (conv_phik_s .gt. prec_phik)
+
+        do ia=0,a_size
+          mk_s(ia)=0.0d0
+        end do
+
         do ip=0,a_size
           do ik=0,a_size
             do iq=0,a_size
-              mk_s(iq)=mk_s(iq)+v2_s(iq,ik,ip)*phik_s(ik)*phik2(ip)+v1_s(iq,ik,ip)*phik_s(ik)
+              mk_s(iq)=mk_s(iq)+v2_s(iq,ik,ip)*phik_s(ik)*phik(ip)+v1_s(iq,ik,ip)*phik_s(ik)
             end do
           end do
         end do
@@ -395,11 +415,12 @@ do while ((conv .gt. prec) .or. (hk*dble(iter) .lt. tlimit))
           phik_s2(ia)=(mk_s(ia)*(1.0d0-dphi_s(1,ia))-dk_s(ia))/(1.0d0+dm_s(1,ia)+3.0d0*factd1_s(ia))
         end do
 
-        conv_phik=0.0d0
+        conv_phik_s=0.0d0
         do ia=0,a_size
-          conv_phik=conv_phik+dabs(phik2(ia)-phik(ia))+dabs(phik_s2(ia)-phik_s(ia))
+          conv_phik_s=conv_phik_s+dabs(phik_s2(ia)-phik_s(ia))
+        end do
 
-          phik(ia)=phik2(ia)
+        do ia=0,a_size
           phik_s(ia)=phik_s2(ia)
         end do
 
@@ -438,8 +459,8 @@ do while ((conv .gt. prec) .or. (hk*dble(iter) .lt. tlimit))
 
 !Calculate m, m_s, and dr2
       do ia=0,a_size
-        mk(ia)=0.0d0
-        mk_s(ia)=0.0d0
+        m(k,ia)=0.0d0
+        m_s(k,ia)=0.0d0
       end do
 
       do ip=0,a_size
@@ -470,7 +491,7 @@ do while ((conv .gt. prec) .or. (hk*dble(iter) .lt. tlimit))
 
       recline=recline+1
 
-write (6,*) recline, nlines
+!write (6,*) recline, nlines
  
       if (recline .eq. nlines-1) then
         phi_init='none'
