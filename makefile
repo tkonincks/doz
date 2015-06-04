@@ -1,10 +1,13 @@
-EXEC=doz.x
+#EXEC=doz.x
+EXEC=doz_prompt.x
+
 #GC=gfortran-4.7
 GC=ifort
 
 ifeq ($(GC),ifort)
 
-GOPT=-march=corei7 -mtune=corei7 -O2 -ipo
+#GOPT=-march=corei7 -mtune=corei7 -O2 -ipo
+GOPT=-O2 -ipo
 
 # -xHost
 # -msse4a

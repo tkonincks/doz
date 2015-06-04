@@ -23,6 +23,14 @@ double precision::sigma,x
 gaussian=dexp((-x**2)/(sigma**2))
 end function
 
+
+double precision function exponential (sigma,x)
+!Exponential function for the potential of the particles
+!=================================================
+double precision::sigma,x
+exponential=dexp(-x/sigma)
+end function
+
 integer function witb (tab,d)
 !Who is the biggest in this array?
 !=================================================

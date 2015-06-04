@@ -243,7 +243,8 @@ end do
 
 !If the calculation was already made, store the old stuff in dyn_inpt
 if (phi_init .eq. 'file') then
-  inquire (directory='dyn', exist=ex)
+!  inquire (directory='dyn', exist=ex)
+  inquire (file='dyn', exist=ex)
   if (ex .eqv. .true.) then
     nlines=clines_dyn()
     call system ('mv dyn dyn_inpt')

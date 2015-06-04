@@ -1,11 +1,11 @@
-subroutine struct (density,delta,sigma,closure,mix_param,cr_init)
+subroutine struct (density,delta,sigma,closure,mix_param,cr_init,correl)
 
 implicit none
 
 double precision::density
 double precision::delta
 double precision::sigma
-character(len=4)::closure,cr_init
+character(len=4)::closure,cr_init,correl
 double precision::mix_param
 
 
@@ -110,6 +110,7 @@ double precision::convergence !Used to calculate the convergence of the calculta
 !Functions
 !==================================================
 double precision::gaussian
+double precision::exponential
 
 !File names
 !==================================================
@@ -185,9 +186,18 @@ do i=0,2**p2 !Distances
   q(i)=i*dq
 end do
 
-do i=0,2**p2 !K(r)
+!Calculation of the disorder correl function according to the user's choice
+if (correl .eq. 'gaus') then
+  do i=0,2**p2 !K(r)
   k(i)=delta*gaussian(sigma,r(i))
-end do
+  end do
+
+else if (correl .eq. 'expl') then
+  do i=0,2**p2 !K(r)
+  k(i)=delta*exponential(sigma,r(i))
+  end do
+end if
+
 
 !Test the existence of a file named cr.dat
 if (cr_init .eq. 'file') then
@@ -287,7 +297,7 @@ do while (convergence .gt. prec)
 
   nbiter=nbiter+1
 
-!Fourrier transform of cr and cdr
+!Fourier transform of cr and cdr
 !==================================================
   cq(0)=0.0d0
   cdq(0)=0.0d0

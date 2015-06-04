@@ -6,7 +6,7 @@ integer::iter
 
 !Inputs of the input.doz file
 !==================================================
-character(len=4)::trans_mode,closure,calc_mode,var_param,cr_init,fq_init,phi_init
+character(len=4)::trans_mode,closure,calc_mode,var_param,cr_init,fq_init,phi_init,correl
 double precision::density,delta,sigma
 double precision::var_prec
 
@@ -85,6 +85,7 @@ trans_mode='xxxx'
 calc_mode='xxxx'
 var_param='xxxx'
 closure='xxxx'
+correl='gaus'
 
 density=0.0d0
 delta=0.0d0
@@ -162,8 +163,8 @@ write (6,*) '    .888N..888   "*888*P"    8F   8888 '
 write (6,*) '     `"888*""      ''Y"      ''8    8888 '
 write (6,*) '        ""                  ''8    888F '
 write (6,*) '   DYNAMICAL                 %k  <88F  '
-write (6,*) '  DISORDERED ORSTEIN-ZERNIKE  "+:*%`   '
-write (6,*) '       VERSION 21052015           '
+write (6,*) '  DISORDERED ORNSTEIN-ZERNIKE "+:*%`   '
+write (6,*) '       VERSION 04062015           '
 write (6,*) ''
 write (6,'(a24,a8,a,a10)') "CALCULATION LAUNCHED ON ",d," ",t
                                    
@@ -179,7 +180,7 @@ write (6,'(a24,a8,a,a10)') "CALCULATION LAUNCHED ON ",d," ",t
 !Call the read subroutine to collect all the data
 call read (trans_mode,closure,calc_mode,var_param,density,delta,sigma,var_incr&
 ,var_prec,var_liq,var_glas,dens_lo,delt_li_lo,delt_gl_lo,dens_hi,delt_li_hi&
-,delt_gl_hi,fast,mix_param,cr_init,fq_init,fcutoff,dynamics,tlimit,phi_init)
+,delt_gl_hi,fast,mix_param,cr_init,fq_init,fcutoff,dynamics,tlimit,phi_init,correl)
 
 prec_eigen=var_prec
 var_fast=fast
@@ -213,11 +214,13 @@ write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
 if (trans_mode .eq. 'stct') then
   write (6,900) 'trans_mode = ',trans_mode                                    
   write (6,900) 'closure    = ',closure
+  write (6,900) 'correl     = ',correl
 
 else
 
   write (6,900) 'trans_mode = ',trans_mode
   write (6,900) 'closure    = ',closure
+  write (6,900) 'correl     = ',correl
   write (6,901) 'mix_param  = ',mix_param
   write (6,900) 'calc_mode  = ',calc_mode
 
@@ -272,7 +275,7 @@ if (calc_mode .eq. 'sing') then
   write (6,*) ""
   write (6,800) "                     RESULTS                         "
   write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  call struct (density,delta,sigma,closure,mix_param,cr_init)
+  call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
   call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
   write (6,*) ""
   write (6,901) "eigenvalue = ",eigenvalue
@@ -303,7 +306,7 @@ if (calc_mode .eq. 'sing') then
 
 
 else if (trans_mode .eq. 'stct') then
-  call struct (density,delta,sigma,closure,mix_param,cr_init)
+  call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
 
 
 
@@ -326,8 +329,9 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
   write (6,800) "                  FIRST RESULTS                      "
   write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
   fast=.false.
-  call struct (density,delta,sigma,closure,mix_param,cr_init)
+  call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
   call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
+  cr_init='file'
   if (trans_mode .eq. 'disc') then
     call fileman('fq.dat',6,11,1)
     do i=0,a_size
@@ -367,7 +371,7 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
       write (6,*) ""
       write (6,800) "          Looking for the transition point           "
       write (6,800) "-----------------------------------------------------"
-      call struct (density,delta,sigma,closure,mix_param,cr_init)
+      call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
       call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
       if (trans_mode .eq. 'disc') then
         call fileman('fq.dat',6,11,1)
@@ -427,7 +431,7 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
       write (6,*) ""
       write (6,800) "          Looking for the transition point           "
       write (6,800) "-----------------------------------------------------"
-      call struct (density,delta,sigma,closure,mix_param,cr_init)
+      call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
       call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
       if (trans_mode .eq. 'disc') then
         call fileman('fq.dat',6,11,1)
@@ -525,7 +529,7 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
     write (6,*) ""
     write (6,*) "                 ITERATION ",iter
     write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-    call struct (density,delta,sigma,closure,mix_param,cr_init)
+    call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
     call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
     if (trans_mode .eq. 'disc') then
       call fileman('fq.dat',6,11,1)
@@ -587,8 +591,10 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
       call fileman('fq.dat',6,11,0)
       conv_fq=maxval(fq,dim=1)
 
-      if ((liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .false.) .and. (dabs(eigenvalue-1.0d0) .lt. prec_eigen))     conv_glas=.true.
-      if ((liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .true.) .and. (dabs(eigenvalue_inflex-1.0d0) .lt. (prec_eigen**2))) conv_liq=.true.
+      if ((liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .false.) &
+.and. (dabs(eigenvalue-1.0d0) .lt. prec_eigen))     conv_glas=.true.
+      if ((liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .true.) &
+.and. (dabs(eigenvalue_inflex-1.0d0) .lt. (prec_eigen**2))) conv_liq=.true.
     end if
 
  
@@ -665,13 +671,13 @@ else if ((trans_mode .eq. 'cont') .and. (calc_mode .eq. 'dich') .and. (var_param
     delt_hi=(delt_gl_hi+delt_li_hi)/2.0d0
     delta=(delt_lo+delt_hi)/2.0d0
 !Run a dichotomy on the delta parameter
-    call struct (density,delta,sigma,closure,mix_param,cr_init)
+    call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
     call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
     if (eigenvalue .lt. 1.0d0) then
       do while (eigenvalue .lt. 1.0d0)
         delt_liq=delta
         delta=delta*var_incr
-    call struct (density,delta,sigma,closure,mix_param,cr_init)
+    call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
     call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
       end do
       delt_glas=delta
@@ -679,14 +685,14 @@ else if ((trans_mode .eq. 'cont') .and. (calc_mode .eq. 'dich') .and. (var_param
       do while (eigenvalue .gt. 1.0d0)
         delt_glas=delta
         delta=delta/var_incr
-        call struct (density,delta,sigma,closure,mix_param,cr_init)
+        call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
         call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
       end do
       delt_liq=delta
     end if
     do 
       delta=(delt_liq+delt_glas)/2.0d0
-      call struct (density,delta,sigma,closure,mix_param,cr_init)
+      call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
       call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
       if (eigenvalue .lt. 1.0d0) then
         delt_liq=delta
@@ -747,8 +753,8 @@ call fileman('final_res',9,11,1)
 if ((trans_mode .eq. 'cont') .or. (trans_mode .eq. 'cont')) then
   write (11,*) dens_liq,dens_glas,delt_liq,delt_glas,lambda,eigenvalue
 else if (trans_mode .eq. 'disc') then
-  if (inflex .eq. .true.) write (11,*) dens_liq,dens_glas,delt_liq,delt_glas,lambda_inflex,eigenvalue_inflex
-  if (inflex .eq. .false.) write (11,*) dens_liq,dens_glas,delt_liq,delt_glas,lambda,eigenvalue
+  if (inflex .eqv. .true.) write (11,*) dens_liq,dens_glas,delt_liq,delt_glas,lambda_inflex,eigenvalue_inflex
+  if (inflex .eqv. .false.) write (11,*) dens_liq,dens_glas,delt_liq,delt_glas,lambda,eigenvalue
 end if
 call fileman('final_res',9,11,0)
 
