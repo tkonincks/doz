@@ -1,5 +1,5 @@
-#EXEC=doz.x
-EXEC=doz_prompt.x
+EXEC=doz.x
+#EXEC=doz_prompt.x
 
 #GC=gfortran-4.7
 GC=ifort

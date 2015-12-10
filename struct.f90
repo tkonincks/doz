@@ -1,4 +1,4 @@
-subroutine struct (density,delta,sigma,closure,mix_param,cr_init,correl)
+subroutine struct (density,delta,sigma,closure,mix_param,cr_init,correl,p2)
 
 implicit none
 
@@ -8,6 +8,8 @@ double precision::sigma
 character(len=4)::closure,cr_init,correl
 double precision::mix_param
 
+!Comment faire en sorte qu'il l'accepte ? Mettre une valeur par defaut ?
+integer::p2
 
 integer::disc
 integer::io
@@ -19,9 +21,11 @@ integer::nbiter
 
 !Constants
 !==================================================
-double precision,parameter::prec=1.0d-12
-double precision,parameter::pi=4.0d0*datan(1.0d0)
-integer,parameter::p2=12
+double precision::prec
+double precision::pi
+
+!prec=1.0d-12
+!pi=4.0d0*datan(1.0d0)
 
 !For the initialization by existing files
 !==================================================
@@ -55,9 +59,11 @@ double precision::k1=0.0d0
 !==================================================
 double precision,dimension(0:2**p2)::r
 double precision,dimension(0:2**p2)::q
-double precision,parameter::dr=0.01d0
-double precision,parameter::dq=pi/((2.0d0**p2)*dr)
-double precision::rmax=dr*(2**p2)
+double precision::dr=0.01d0
+!double precision::dq=pi/((2.0d0**(p2)*dr))
+!double precision::rmax=dr*(2**(p2))
+double precision::dq
+double precision::rmax
 
 double precision,dimension(0:2**p2)::cr !Direct interaction
 double precision,dimension(0:2**p2)::cr2 !Array used to stock the value of cr(r)
@@ -111,6 +117,8 @@ double precision::convergence !Used to calculate the convergence of the calculta
 !==================================================
 double precision::gaussian
 double precision::exponential
+double precision::ltzsquare
+double precision::cosecant
 
 !File names
 !==================================================
@@ -131,6 +139,12 @@ io=0
 nbiter=0
 convergence=1.0d0
 fileex=.false.
+
+prec=1.0d-12
+pi=4.0d0*datan(1.0d0)
+
+dq=pi/((2.0d0**(p2)*dr))
+rmax=dr*(2**(p2))
 
 do i=0,2**p2
   k(i)=0.0d0
@@ -195,6 +209,21 @@ if (correl .eq. 'gaus') then
 else if (correl .eq. 'expl') then
   do i=0,2**p2 !K(r)
   k(i)=delta*exponential(sigma,r(i))
+  end do
+
+else if (correl .eq. 'lzsq') then
+  do i=0,2**p2 !K(r)
+  k(i)=delta*ltzsquare(sigma,r(i))
+  end do
+
+else if (correl .eq. 'exga') then
+  do i=0,2**p2 !K(r)
+  k(i)=delta*(dexp(gaussian(sigma,r(i)))-1d0)
+  end do
+
+else if (correl .eq. 'cosc') then
+  do i=0,2**p2 !K(r)
+  k(i)=delta*cosecant(sigma,r(i))
   end do
 end if
 

@@ -1,7 +1,7 @@
 subroutine read (trans_mode,closure,calc_mode,var_param,density,delta,sigma,&
 var_incr,var_prec,var_liq,var_glas,dens_lo,delt_li_lo,delt_gl_lo,dens_hi,&
-delt_li_hi,delt_gl_hi,fast,mix_param,cr_init,fq_init,fcutoff,dynamics,tlimit,&
-phi_init,correl)
+delt_li_hi,delt_gl_hi,fast,mix_param,cr_init,fq_init,fcutup,fcutdown,dynamics,tlimit,&
+phi_init,correl,disp_iter,p2)
 
 implicit none
 
@@ -10,8 +10,8 @@ character(len=4)::trans_mode,closure,calc_mode,var_param,cr_init,fq_init,&
 phi_init,correl
 double precision::density,delta,sigma,var_incr,var_prec,var_liq,var_glas,&
 dens_lo,delt_li_lo,delt_gl_lo,dens_hi,delt_li_hi,delt_gl_hi,mix_param,&
-fcutoff,tlimit
-
+fcutdown,tlimit
+integer::fcutup,disp_iter,p2
 logical::fast,dynamics
 
 integer::io=0
@@ -42,10 +42,13 @@ var_incr=1.05
 mix_param=0.95
 cr_init='pyev'
 fq_init='unit'
-fcutoff=1.0d-9
+fcutdown=1.0d-12
+fcutup=0
 tlimit=1.0d12
 phi_init='none'
 correl='gaus'
+disp_iter=10
+p2=12
 
 open (11,file='input.doz')
 
@@ -96,8 +99,10 @@ do
       read (11,*,iostat=io) cr_init
     case ('fq_init')
       read (11,*,iostat=io) fq_init
-    case ('fcutoff')
-      read (11,*,iostat=io) fcutoff
+    case ('fcutdown')
+      read (11,*,iostat=io) fcutdown
+    case ('fcutup')
+      read (11,*,iostat=io) fcutup   
     case ('dynamics')
       read (11,*,iostat=io) dynamics
     case ('tlimit')
@@ -106,6 +111,11 @@ do
       read (11,*,iostat=io) phi_init
     case ('correl')
       read (11,*,iostat=io) correl
+    case ('disp_iter')
+      read (11,*,iostat=io) disp_iter
+    case ('p2')
+      read(11,*,iostat=io) p2
+
   end select
 
   if (io .ne. 0) exit

@@ -23,6 +23,17 @@ closure    mn3c N3 closure on a MSA basis
 
 NO DEFAULT VALUE
 
+**************************
+***Correlation function***
+**************************
+correl     gaus Gaussian correlation function
+correl     expl Exponential correlation function
+correl     lzsq Lorentzian square correlation function
+correl     exga Exponential(gaussian) correlation function
+correl     cosc Cosecant correlation function
+
+DEFAULT VALUE gaus
+
 *************************
 ***Type of calculation***
 *************************
@@ -35,8 +46,10 @@ NO DEFAULT VALUE
 *********************************
 ***Calculation of the dynamics***
 *********************************
-dynamics   bbbb Calculation of the correlators phi_c (collective) and phi_s (self)
-                and of the mean square displacement
+dynamics   bbbb Calculation of the correlators phi_c (collective) and phi_s (self),
+                the mean square displacement, the mean quartic displacement,
+                the non-gaussian parameter alpha (does not work for an unknown reason)
+                and the diffusive exponent mu.
 
 DEFAULT VALUE false
 
@@ -44,6 +57,11 @@ tlimit     xxxx The calculation will stop if the value of (phi+phi_s) is below 1
                 and if the time exceeds tlimit. Put it zero if you want short calculations.
 
 DEFAULT VALUE 1.0d12
+
+disp_iter  iiii When writing the convergence, gives the frequence with which iteration 
+                steps values are written (does not work for now)
+
+DEFAULT VALUE 10
 
 **************************************
 ***Discontinuous transition options***
@@ -56,10 +74,14 @@ Only works when calculating the discontinuous transition and using dich or rest 
 
 DEFAULT VALUE .false.
 
-fcutoff    the value below which the inflexion if not considered
-fcutoff may be useful to tune the way you use the fast option
+fcutup     iiii The iteration value before which the inflexion is not considered
 
-DEFAULT VALUE 1.0d-9
+DEFAULT VALUE 0
+
+fcutdown   xxxx The value below which the inflexion is not considered
+fcutdown may be useful to tune the way you use the fast option
+
+DEFAULT VALUE 1.0d-12
 
 ******************************************
 ***Initialization of phi, phi_s and dr2***
@@ -78,6 +100,15 @@ var_param  delt Precision made on delta in the dichotomy
 var_param  lamb Refine of lambda, precision on the value of lambda
 
 NO DEFAULT VALUE
+
+
+***********************************************************
+***Initalization of the size of the arrays in struct.f95***
+***********************************************************
+p2         iiii Defines an array with a 2**p2
+Usually p2=12 when using the gaussian correlation function and p2=14 when using the exponential correlation function.
+
+DEFAULT VALUE 12
 
 **********************************************************
 ***Initalization of the cr and cdr arrays in struct.f95***
@@ -134,18 +165,6 @@ trans_mode yyyy
 closure    yyyy
 calc_mode  dich
 fast       bbbb
-var_param  yyyy
-var_incr   xxxx
-var_prec   xxxx
-density    xxxx
-delta      xxxx
-sigma      xxxx
-
-Fast Dichotomy:
-
-trans_mode disc
-closure    yyyy
-calc_mode  fdic
 var_param  yyyy
 var_incr   xxxx
 var_prec   xxxx

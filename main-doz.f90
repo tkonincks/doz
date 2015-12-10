@@ -1,3 +1,15 @@
+!Ornstein-Zernike and Mode Coupling Theory solver for fluids in pure disorder
+!By Thomas Konincks, Agathe Baltzer, Vincent Krakoviack
+
+!Contact:
+!thomas.konincks@ens-lyon.fr
+!agathe.baltzer@ens-lyon.fr
+!vincent.krakoviack@ens-lyon.fr
+
+
+
+
+
 program main
 
 implicit none
@@ -27,11 +39,12 @@ double precision::lamb_hi
 
 logical::fast,var_fast,dynamics
 
-double precision::mix_param,fcutoff,tlimit
+double precision::mix_param,fcutdown,tlimit
 
 logical::inflex
 
 logical::conv_glas,conv_liq
+integer::fcutup,disp_iter,p2
 
 !Ouputs of the run subroutine
 !==================================================
@@ -86,6 +99,7 @@ calc_mode='xxxx'
 var_param='xxxx'
 closure='xxxx'
 correl='gaus'
+p2=12
 
 density=0.0d0
 delta=0.0d0
@@ -164,7 +178,7 @@ write (6,*) '     `"888*""      ''Y"      ''8    8888 '
 write (6,*) '        ""                  ''8    888F '
 write (6,*) '   DYNAMICAL                 %k  <88F  '
 write (6,*) '  DISORDERED ORNSTEIN-ZERNIKE "+:*%`   '
-write (6,*) '       VERSION 04062015           '
+write (6,*) '       VERSION 20151210           '
 write (6,*) ''
 write (6,'(a24,a8,a,a10)') "CALCULATION LAUNCHED ON ",d," ",t
                                    
@@ -174,13 +188,10 @@ write (6,'(a24,a8,a,a10)') "CALCULATION LAUNCHED ON ",d," ",t
 
 
 
-
-
-
 !Call the read subroutine to collect all the data
 call read (trans_mode,closure,calc_mode,var_param,density,delta,sigma,var_incr&
 ,var_prec,var_liq,var_glas,dens_lo,delt_li_lo,delt_gl_lo,dens_hi,delt_li_hi&
-,delt_gl_hi,fast,mix_param,cr_init,fq_init,fcutoff,dynamics,tlimit,phi_init,correl)
+,delt_gl_hi,fast,mix_param,cr_init,fq_init,fcutup,fcutdown,dynamics,tlimit,phi_init,correl,disp_iter,p2)
 
 prec_eigen=var_prec
 var_fast=fast
@@ -200,8 +211,8 @@ end if
 901 format (a13,f25.16)
 902 format (a13,es25.16)
 903 format (a13,l8)
-
-
+904 format (a13,i2)
+905 format (a13,i3)
 
 
 
@@ -215,6 +226,7 @@ if (trans_mode .eq. 'stct') then
   write (6,900) 'trans_mode = ',trans_mode                                    
   write (6,900) 'closure    = ',closure
   write (6,900) 'correl     = ',correl
+  write (6,904) 'p2         = ',p2
 
 else
 
@@ -223,6 +235,7 @@ else
   write (6,900) 'correl     = ',correl
   write (6,901) 'mix_param  = ',mix_param
   write (6,900) 'calc_mode  = ',calc_mode
+  write (6,904) 'p2         = ',p2
 
 end if
 
@@ -259,7 +272,12 @@ write (6,*) ""
 write (6,900) 'cr_init    = ',cr_init
 write (6,900) 'fq_init    = ',fq_init
 
-if (trans_mode .eq. 'disc') write (6,901) 'fcutoff    = ',fcutoff
+if (trans_mode .eq. 'disc') then
+  write (6,904) 'disp_iter  = ',disp_iter
+  write (6,*) ''
+  write (6,905) 'fcutup     = ',fcutup
+  write (6,901) 'fcutdown   = ',fcutdown
+end if
 
 if (dynamics .eqv. .true.) then
   write (6,'(a27)') 'Calculation of the dynamics'
@@ -275,8 +293,9 @@ if (calc_mode .eq. 'sing') then
   write (6,*) ""
   write (6,800) "                     RESULTS                         "
   write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-  call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
-  call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
+  call struct (density,delta,sigma,closure,mix_param,cr_init,correl,p2)
+  call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,&
+inflex,fast,fcutup,fcutdown,fq_init,disp_iter,p2)
   write (6,*) ""
   write (6,901) "eigenvalue = ",eigenvalue
   write (6,901) "lambda     = ",lambda
@@ -306,7 +325,7 @@ if (calc_mode .eq. 'sing') then
 
 
 else if (trans_mode .eq. 'stct') then
-  call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
+  call struct (density,delta,sigma,closure,mix_param,cr_init,correl,p2)
 
 
 
@@ -329,8 +348,9 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
   write (6,800) "                  FIRST RESULTS                      "
   write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
   fast=.false.
-  call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
-  call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
+  call struct (density,delta,sigma,closure,mix_param,cr_init,correl,p2)
+  call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,&
+lambda_inflex,inflex,fast,fcutup,fcutdown,fq_init,disp_iter,p2)
   cr_init='file'
   if (trans_mode .eq. 'disc') then
     call fileman('fq.dat',6,11,1)
@@ -356,7 +376,7 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
     write (6,902) "conv_fq    = ",conv_fq
   end if
 
-
+  fq_init='unit'
 
   if (liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .true.) then
     do while (liq_glas (trans_mode,fast,eigenvalue,conv_fq,inflex) .eqv. .true.)
@@ -371,8 +391,9 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
       write (6,*) ""
       write (6,800) "          Looking for the transition point           "
       write (6,800) "-----------------------------------------------------"
-      call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
-      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
+      call struct (density,delta,sigma,closure,mix_param,cr_init,correl,p2)
+      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,&
+lambda_inflex,inflex,fast,fcutup,fcutdown,fq_init,disp_iter,p2)
       if (trans_mode .eq. 'disc') then
         call fileman('fq.dat',6,11,1)
         do i=0,a_size
@@ -431,8 +452,9 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
       write (6,*) ""
       write (6,800) "          Looking for the transition point           "
       write (6,800) "-----------------------------------------------------"
-      call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
-      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
+      call struct (density,delta,sigma,closure,mix_param,cr_init,correl,p2)
+      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,&
+lambda_inflex,inflex,fast,fcutup,fcutdown,fq_init,disp_iter,p2)
       if (trans_mode .eq. 'disc') then
         call fileman('fq.dat',6,11,1)
         do i=0,a_size
@@ -529,8 +551,9 @@ else if ((calc_mode .eq. 'dich') .and. (var_param .ne. 'lamb')) then
     write (6,*) ""
     write (6,*) "                 ITERATION ",iter
     write (6,800) "-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-"
-    call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
-    call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
+    call struct (density,delta,sigma,closure,mix_param,cr_init,correl,p2)
+    call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,&
+lambda_inflex,inflex,fast,fcutup,fcutdown,fq_init,disp_iter,p2)
     if (trans_mode .eq. 'disc') then
       call fileman('fq.dat',6,11,1)
       do i=0,a_size
@@ -671,29 +694,33 @@ else if ((trans_mode .eq. 'cont') .and. (calc_mode .eq. 'dich') .and. (var_param
     delt_hi=(delt_gl_hi+delt_li_hi)/2.0d0
     delta=(delt_lo+delt_hi)/2.0d0
 !Run a dichotomy on the delta parameter
-    call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
-    call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
+    call struct (density,delta,sigma,closure,mix_param,cr_init,correl,p2)
+    call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,&
+lambda_inflex,inflex,fast,fcutup,fcutdown,fq_init,disp_iter,p2)
     if (eigenvalue .lt. 1.0d0) then
       do while (eigenvalue .lt. 1.0d0)
         delt_liq=delta
         delta=delta*var_incr
-    call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
-    call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
+    call struct (density,delta,sigma,closure,mix_param,cr_init,correl,p2)
+    call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,&
+lambda_inflex,inflex,fast,fcutup,fcutdown,fq_init,disp_iter,p2)
       end do
       delt_glas=delta
     else if (eigenvalue .gt. 1.0d0) then
       do while (eigenvalue .gt. 1.0d0)
         delt_glas=delta
         delta=delta/var_incr
-        call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
-        call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
+        call struct (density,delta,sigma,closure,mix_param,cr_init,correl,p2)
+        call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex&
+,lambda_inflex,inflex,fast,fcutup,fcutdown,fq_init,disp_iter,p2)
       end do
       delt_liq=delta
     end if
     do 
       delta=(delt_liq+delt_glas)/2.0d0
-      call struct (density,delta,sigma,closure,mix_param,cr_init,correl)
-      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex,lambda_inflex,inflex,fast,fcutoff,fq_init)
+      call struct (density,delta,sigma,closure,mix_param,cr_init,correl,p2)
+      call eigen (trans_mode,density,eigenvalue,lambda,eigenvalue_inflex&
+,lambda_inflex,inflex,fast,fcutup,fcutdown,fq_init,disp_iter,p2)
       if (eigenvalue .lt. 1.0d0) then
         delt_liq=delta
       else if (eigenvalue .gt. 1.0d0) then

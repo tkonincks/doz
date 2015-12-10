@@ -31,6 +31,20 @@ double precision::sigma,x
 exponential=dexp(-x/sigma)
 end function
 
+double precision function ltzsquare (sigma,x)
+!Lorentzian square function for the potential of the particles
+!=================================================
+double precision::sigma,x
+ltzsquare=((1+(x/sigma)**2)**(-2))
+end function
+
+double precision function cosecant (sigma,x)
+!Cosecant function for the potential of the particles
+!=================================================
+double precision::sigma,x
+cosecant=((dexp(x/sigma)+dexp(-x/sigma))**(-1.0d0))
+end function
+
 integer function witb (tab,d)
 !Who is the biggest in this array?
 !=================================================
