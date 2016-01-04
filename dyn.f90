@@ -342,6 +342,7 @@ if (phi_init .eq. 'file') then
   inquire (file='dyn/phi_000.dat', exist=ex)
   if (ex .eqv. .true.) then
     nlines=clines_dyn()
+    nlines=nlines-1
     call system ('mv dyn/ dyn_inpt/')
     do iq=0,q_size
       write (phi_inpt_file,'(a13,i3.3,a4)') 'dyn_inpt/phi_',iq,'.dat'
@@ -352,8 +353,8 @@ if (phi_init .eq. 'file') then
 
     !read the first value at time=0
     do iq=0,q_size
-      read (710+iq,*) a,phi(t,iq)
-      read (1010+iq,*) a,phi_s(t,iq)
+      read (710+iq,*) a,b
+      read (1010+iq,*) a,b
     end do
 
     !read the rest
@@ -368,8 +369,7 @@ if (phi_init .eq. 'file') then
     end do
 
   else
-    write (6,*) 'No files for phi, please check your inputs.'
-    stop
+    write (6,*) 'No files for phi, changed the input phi_init for none.'
   end if
 end if
 
@@ -385,7 +385,6 @@ do iq=0,q_size
 
   call fileman(phi_file,len(phi_file),10+iq,1)
   call fileman(phi_s_file,len(phi_s_file),310+iq,1)
-
   write (10+iq,*) 0.0d0,1.0d0
   write (310+iq,*) 0.0d0,1.0d0
   do t=1,t_size
@@ -420,7 +419,6 @@ call fileman(alpha_file,len(alpha_file),612,0)
 call fileman(mu_file,len(mu_file),613,0)
 
 
-
 iter=dble(t_size)
 mult=1.0d0
 
@@ -430,7 +428,7 @@ mult=1.0d0
 do while ((conv .gt. prec) .or. (ht*dble(iter) .lt. tlimit))
 
   !ITERATION INCREMENTING K
-  do t=t_size+1,t_size*2
+11 do t=t_size+1,t_size*2
 
     tt=t/2
     iter=iter+mult
@@ -710,15 +708,14 @@ do while ((conv .gt. prec) .or. (ht*dble(iter) .lt. tlimit))
 
       recline=recline+1
 
-!write (6,*) recline, nlines
- 
-      if (recline .eq. nlines-1) then
-        phi_init='none'
+      if (recline .eq. nlines) then
         do iq=0,q_size
+          write (phi_inpt_file,'(a13,i3.3,a4)') 'dyn_inpt/phi_',iq,'.dat'
+          write (phi_s_inpt_file,'(a15,i3.3,a4)') 'dyn_inpt/phi_s_',iq,'.dat'
           call fileman(phi_inpt_file,len(phi_inpt_file),710+iq,0)
           call fileman(phi_s_inpt_file,len(phi_s_inpt_file),1010+iq,0)
         end do
-        goto 11
+        phi_init='none'
       end if
 
     end if
@@ -727,7 +724,7 @@ do while ((conv .gt. prec) .or. (ht*dble(iter) .lt. tlimit))
 
 !Write the stuff
 !=================================================
-11  do iq=0,q_size
+    do iq=0,q_size
       write (phi_file,'(a8,i3.3,a4)') 'dyn/phi_',iq,'.dat'
       write (phi_s_file,'(a10,i3.3,a4)') 'dyn/phi_s_',iq,'.dat'
 
